@@ -295,13 +295,15 @@ sigma_arr = PostProcessing.extract_from_function(sigma, coords_mids)
 # Compute the non dimensional evaporated charge and current.
 j_ev = (sigma*T_h)/(LiquidInps.eps_r*Chi) * fn.exp(-Phi/T_h * (
         1-pow(B, 1/4)*fn.sqrt(E_v_n)))
+j_cond = (1+Electrostatics.Lambda*(Electrostatics.T_h-1))*E_l_n
 I_h = Poisson.get_nd_current(boundaries, boundaries_ids, j_ev, r0)
 
 j_ev_arr = PostProcessing.extract_from_function(j_ev, coords_mids)
+j_cond_arr = PostProcessing.extract_from_function(j_cond, coords_mids)
 
 # %% DATA POSTPROCESSING.
 # Check charge conservation.
-cc_check = Electrostatics.check_charge_conservation(coords)
+cc_check = Electrostatics.check_charge_conservation(coords_mids)
 
 # Plot.
 plotpy.lineplot([(r_nodes, E_v_r, r'Radial ($\hat{r}$)'),
@@ -325,11 +327,6 @@ plotpy.lineplot([(r_mids, E_v_n_array, 'Vacuum'),
 plotpy.lineplot([(r_mids, sigma_arr)],
                 xlabel=x_label, ylabel=r'$\hat{\sigma}$',
                 fig_title='Radial evolution of the surface charge density')
-
-plotpy.lineplot([(r_mids, cc_check)],
-                xlabel=x_label, ylabel=r'$\hat{j}_n^e - \hat{j}_{cond}$',
-                yscale='linear',
-                fig_title='Kinetic evaporation law minus conduction')
 
 # %% SOLVE STOKES EQUATION.
 # Define the required non dimensional parameters.
