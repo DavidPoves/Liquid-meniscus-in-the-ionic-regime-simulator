@@ -491,13 +491,15 @@ class Poisson(object):
         r = fn.SpatialCoordinate(self.mesh)[0]
         K = 1+self.Lambda*(self.T_h - 1)
 
+        E_v_n = fn.dot(-fn.grad(phi("-")), n("-"))*self.dx(self.lower_subdomain_id)
+
         def expFun(phi):
-            sqrterm = fn.dot(-fn.grad(phi("-")), n("-"))
+            sqrterm = E_v_n
             expterm = self.Phi/self.T_h*(1-pow(self.B, 0.25)*fn.sqrt(sqrterm))
             return fn.exp(expterm)
 
         def sigma_fun(phi):
-            num = K*fn.dot(-fn.grad(phi("-")), n("-")) + self.eps_r*self.j_conv
+            num = K*E_v_n + self.eps_r*self.j_conv
             den = K + self.T_h/self.Chi*expFun(phi)
             return num/den
 
@@ -952,76 +954,3 @@ class Poisson(object):
         den = r0**2
 
         return num/den
-
-    def check_charge_conservation(self, coords):
-        """
-        Check the charge evaporation condition at the interface. This condition
-        is given by the following expression.
-                        $j_n^e = j_{conv} + j_{cond}$,
-        where:
-            $ j_n^e = \frac{\sigmaT}{eps_r*Chi}exp(-\frac{\Phi}{T}(1-B^(1/4)*\sqrt{E_v^n}))$
-            $ j_{cond} = (1+\Lambda(T-1))E_l^n$
-            $ j_{conv} $ is the convection charge.
-        Note all paramaters are non dimensional, so the \hat notation has been
-        omitted.
-
-        This check computes the difference between the evaporated and the
-        conduction charge, so to do the check the result of this method should
-        be the charge transported by convection.
-
-        Parameters
-        ----------
-        mesh : dolfin.cpp.mesh.Mesh
-            Mesh of the domain.
-        boundaries : dolfin.cpp.mesh.MeshFunctionSizet
-            Data of the boundaries of the domain.
-        sigma : dolfin.function.function.Function
-            Dolfin function of the surface charge density.
-        phi : dolfin.function.function.Function
-            Dolfin function of the potential. This is the function obtained
-            from the solve method.
-        restrictions : dict
-            Dictionary containing the restrictions of the domain.
-        inputs : dict
-            Dictionary containing all the required inputs for the
-            electrostatics.
-        coords : array like
-            Array containing the coordinates of the midpoints of the facets
-            forming the interface.
-        boundary_id : int
-            Id of the interface in the boundaries object.
-
-        Returns
-        -------
-        check : array like
-            Array containing the convection charge. The values inside must
-            coincide with the convection charge introduced in the solver.
-
-        """
-
-        # Create the normal vector instance.
-        n = fn.FacetNormal(self.mesh)
-
-        # Obtain the normal electric fields from the potential.
-        E_v_n = fn.dot(-fn.grad(self.phi("-")), n("-"))
-        E_l_n = (E_v_n-self.sigma)/self.eps_r  # From the jump condition.
-
-        # Define the kinetic evaporation law.
-        kel = (self.sigma*self.T_h)/(self.eps_r*self.Chi)*fn.exp(-self.Phi/self.T_h*(1-pow(self.B, 1/4)*fn.sqrt((E_v_n))))
-
-        # Define the charge due to conduction.
-        j_cond = (1+self.Lambda*(self.T_h-1))*E_l_n
-
-        # Evaluate the previous expression at interface coordinates.
-        charge_cons = (kel - j_cond)
-
-        # Project the solution.
-        charge_cons = Poisson.block_project(charge_cons, self.mesh,
-                                            self.interface_rtc,
-                                            self.boundaries,
-                                            self.boundaries_ids['Interface'],
-                                            space_type='scalar', sign="-",
-                                            boundary_type='internal',
-                                            restricted=True)
-        charge_cons = PostProcessing.extract_from_function(charge_cons, coords)
-        return charge_cons

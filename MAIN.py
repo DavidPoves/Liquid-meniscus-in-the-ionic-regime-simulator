@@ -302,9 +302,6 @@ j_ev_arr = PostProcessing.extract_from_function(j_ev, coords_mids)
 j_cond_arr = PostProcessing.extract_from_function(j_cond, coords_mids)
 
 # %% DATA POSTPROCESSING.
-# Check charge conservation.
-cc_check = Electrostatics.check_charge_conservation(coords_mids)
-
 # Plot.
 plotpy.lineplot([(r_nodes, E_v_r, r'Radial ($\hat{r}$)'),
                  (r_nodes, E_v_z, r'Axial ($\hat{z}$)')],
