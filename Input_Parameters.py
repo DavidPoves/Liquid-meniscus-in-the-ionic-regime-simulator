@@ -13,32 +13,19 @@ properly referenced.
 Most data can be found at: http://ILThermo.boulder.nist.gov/ILThermo/
 """
 
-# %% LIQUID CHARACTERISTICS.
-"""
-In the next cells, the properties of different Ionic Liquids are defined.
-Different sources will be used and properly cited.
-"""
+# %% GENERAL DATA.
 
-class Inputs(object):
 
-    def __init__(self):
-        """
-        Method used to load all the parameters that are independent from the
-        type of liquid used.
+class Liquid_Properties(object):
 
-        Returns
-        -------
-        None.
-
-        """
+    def __init__(self, relative_permittivity=10):
         self.vacuum_perm = 1/(4*np.pi*9e9)  # Vacuum Permittivity [Nm^2/C^2]
-        self.eps_r = 10  # [-]. From Coffman's thesis page 58
+        self.eps_r = relative_permittivity  # [-]
         self.q_m = 1e6  # [C/kg]. Specific charge. From Coffman's thesis page 58
         self.k_B = 1.38064852e-23  # [m^2 kg s^-2 K^-1]. Boltzmann's constant
         self.h = 6.62607004e-34  # [m^2 kg/s]. Planck's constant
 
     def EMIBF4(self):
-        # %% EMI-BF4 IL PROPERTIES.
         """
         Complete name: 1-ethyl-3-methylimidazolium Tetrafluoroborate
         """
@@ -77,14 +64,14 @@ class Inputs(object):
         solution in molecular liquids
         """
         self.cp_mol = 308.1  # [J/mol-K]
-        self.cp_mass = self.cp_mol / self.MW  # [J/kg-K]
+        cp_mass_EMIBF4 = self.cp_mol / self.MW  # [J/kg-K]
 
         # Nominal Activation Energy (or solvation energy) of the liquid [eV]
         """
         # Obtained from: Ion evaporation from Taylor cones of propylene
         carbonate mixed with ionic liquids, page 453
         """
-        self.Solvation_energy = 1.8  # [eV]. See Coffman's thesis page
+        self.Solvation_energy= 1.8*1.602176565e-19  # [eV -> J]
 
         # Thermal conductivity of the fluid [W/m-K] (at 300K)
         """

@@ -1,8 +1,6 @@
 # Copyright (C) 2020- by David Poves Ros
 #
-# This file is part of the End of Degree Thesis:
-# SIMULATION OF THE LIQUID MENISCUS IN THE IONIC REGIME OF CAPILLARY
-# ELECTROSPRAY THRUSTERS
+# This file is part of the End of Degree Thesis.
 #
 # This is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -17,7 +15,7 @@
 
 # Import the libraries.
 import os
-from Input_Parameters import Inputs
+from Input_Parameters import Liquid_Properties
 from Solvers.Poisson_solver import Poisson
 from Solvers.NS_Solver import Navier_Stokes as NS
 import fenics as fn
@@ -90,12 +88,10 @@ plotpy = PlotPy(latex=True, fontsize=12., figsize=(12., 7.),
 
 
 # %% IMPORT AND DECLARE THE INITIAL DATA.
-# Initialize the inputs class.
-inputs = Inputs()
-# Load EMIBF4 data.
-inputs.EMIBF4()
-# Introduce a temperature.
-T = 298.15  # [K]
+LiquidInps = Liquid_Properties(relative_permittivity=10)
+LiquidInps.EMIBF4()  # Load EMIBF4 liquid properties.
+
+T = 298.15  # Reference temperature [K]
 
 # Define values for simulation.
 r0_list = [1e-6, 2.5e-6, 4e-6, 4.5e-6, 5e-6]
@@ -162,19 +158,18 @@ T_h = 1
 Lambda = Lambda_list[0]
 B = B_list[0]
 E0 = E0_list[0]
-top_potential = -E0*z0/r0
-Chi = (inputs.h*inputs.k_prime)/(Lambda*inputs.k_B*inputs.vacuum_perm*inputs.eps_r)
-Phi = inputs.Solvation_energy/(inputs.k_B*T)
+Chi = (LiquidInps.h*LiquidInps.k_prime)/(Lambda*LiquidInps.k_B*LiquidInps.vacuum_perm*LiquidInps.eps_r)
+Phi = LiquidInps.Solvation_energy/(LiquidInps.k_B*T)
 
-# Define the constant inputs for the electrostatics solver.
-inputs_elec = {'Relative_perm': inputs.eps_r,
-               'Contact_line_radius': r0,
-               'Non_dimensional_temperature': T_h,
-               'Lambda': Lambda,
-               'Phi': Phi,
-               'B': B,
-               'Chi': Chi,
-               'Convection charge': 0}
+# Define the constant inputs for the solver.
+inputs = {'Relative_perm': LiquidInps.eps_r,
+          'Contact_line_radius': r0,
+          'Non_dimensional_temperature': T_h,
+          'Lambda': Lambda,
+          'Phi': Phi,
+          'B': B,
+          'Chi': Chi,
+          'Convection charge': 0}
 
 # Define the boundary conditions.
 """
@@ -185,8 +180,9 @@ Notice the structure of the boundary conditions:
     3. A list where the first value is the value of the bc and the second
         element is the subdomain to which it belongs to.
 """
-top_potential = fn.Constant(-10.)
-ref_potential = fn.Constant(0.)
+
+top_potential = -E0*z0/r0
+ref_potential = 0
 boundary_conditions_elec = {'Top_Wall': {'Dirichlet': [top_potential, 'vacuum']},
                             'Inlet': {'Dirichlet': [ref_potential, 'liquid']},
                             'Tube_Wall_R': {'Dirichlet': [ref_potential, 'liquid']},
@@ -197,9 +193,9 @@ boundary_conditions_elec = {'Top_Wall': {'Dirichlet': [top_potential, 'vacuum']}
 
 
 # Initialize the Electrostatics class, loading constant parameters.
-Electrostatics = Poisson(inputs_elec, boundary_conditions_elec,
-                         ofilename_.strip(), mesh_folder_path,
-                         restrictions_folder_path, checks_folder_path)
+Electrostatics = Poisson(inputs, boundary_conditions_elec, ofilename_.strip(),
+                         mesh_folder_path, restrictions_folder_path,
+                         checks_folder_path)
 
 # Get the mesh object.
 mesh = Electrostatics.get_mesh()
@@ -297,7 +293,7 @@ E_l_n_array = PostProcessing.extract_from_function(E_l_n, coords_mids)
 sigma_arr = PostProcessing.extract_from_function(sigma, coords_mids)
 
 # Compute the non dimensional evaporated charge and current.
-j_ev = (sigma*T_h)/(eps_r*Chi) * fn.exp(-Phi/T_h * (
+j_ev = (sigma*T_h)/(LiquidInps.eps_r*Chi) * fn.exp(-Phi/T_h * (
         1-pow(B, 1/4)*fn.sqrt(E_v_n)))
 I_h = Poisson.get_nd_current(boundaries, boundaries_ids, j_ev, r0)
 
@@ -337,14 +333,14 @@ plotpy.lineplot([(r_mids, cc_check)],
 
 # %% SOLVE STOKES EQUATION.
 # Define the required non dimensional parameters.
-k = inputs.k_0
-E_c = np.sqrt((4*inputs.gamma)/(r0*inputs.vacuum_perm))
-E_star = (4*np.pi*inputs.vacuum_perm*inputs.Solvation_energy**2)/(1.60218e-19)**3
+k = k_0
+E_c = np.sqrt((4*gamma)/(r0*vacuum_perm))
+E_star = (4*np.pi*vacuum_perm*delta_G**2)/(1.60218e-19)**3
 j_star = k*E_star/eps_r
-u_star = j_star/(inputs.rho_0*inputs.q_m)
+u_star = j_star/(rho_0*q_m)
 r_star = B*r0
-We = (inputs.rho_0*u_star**2*r_star)/(2*inputs.gamma)
-Ca = inputs.mu_0*u_star/(2*inputs.gamma)
+We = (rho_0*u_star**2*r_star)/(2*gamma)
+Ca = mu_0*u_star/(2*gamma)
 
 # Define the boundary conditions.
 boundary_conditions_fluids = {'Tube_Wall_R': {'Dirichlet':
