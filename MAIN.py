@@ -1,6 +1,8 @@
 # Copyright (C) 2020- by David Poves Ros
 #
-# This file is part of the End of Degree Thesis.
+# This file is part of the End of Degree Thesis:
+# SIMULATION OF THE LIQUID MENISCUS IN THE IONIC REGIME OF CAPILLARY
+# ELECTROSPRAY THRUSTERS
 #
 # This is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -15,7 +17,7 @@
 
 # Import the libraries.
 import os
-import Input_Parameters as Inp_Parameters
+from Input_Parameters import Inputs
 from Solvers.Poisson_solver import Poisson
 from Solvers.NS_Solver import Navier_Stokes as NS
 import fenics as fn
@@ -88,30 +90,18 @@ plotpy = PlotPy(latex=True, fontsize=12., figsize=(12., 7.),
 
 
 # %% IMPORT AND DECLARE THE INITIAL DATA.
-liquid = 'EMIBF4'  # Choose the liquid to be studied.
-vacuum_perm, eps_r, q_m, k_B, h_Planck = Inp_Parameters.General_Parameters()
-liquid_data = Inp_Parameters.Liquid_Data(liquid)
-
-MW = liquid_data[0]  # Molecular Weight of the liquid [kg/mol]
-rho_0 = liquid_data[1]  # Density of the liquid [kg/m^3] (at 298.15K)
-mu_0 = liquid_data[2]  # Viscosity of the liquid [Pa-s] (at 298.15K)
-k_0 = liquid_data[3]  # Nominal electric conductivity [S/m] (at 298.15K)
-k_prime = liquid_data[4]  # Thermal Sensitivity of the liquid [S/m-K]
-cp_mass = liquid_data[5]  # Specific heat capacity [J/mol-K] (at 298.15K)
-Solvation_Energy = liquid_data[6]  # Nominal Solvation energy [eV]
-delta_G = Solvation_Energy * 1.60218e-19  # Transform eV to Joules.
-k_T = liquid_data[7]  # Thermal conductivity of the fluid [W/m-K] (at 300K)
-T = 298.15  # Reference temperature [K]
-gamma = liquid_data[8]  # Intrinsic surface energy of the fluid [N/m].
-ref_potential = 0  # Reference potential [V]
-q_m = 1e6  # Specific charge density [C/kg]
+# Initialize the inputs class.
+inputs = Inputs()
+# Load EMIBF4 data.
+inputs.EMIBF4()
+# Introduce a temperature.
+T = 298.15  # [K]
 
 # Define values for simulation.
 r0_list = [1e-6, 2.5e-6, 4e-6, 4.5e-6, 5e-6]
 Lambda_list = [1, 12]
 E0_list = [0.99, 0.65]
 B_list = [0.0467, 0.00934]
-eps_r = 10
 C_R = 1e3
 P_r_h = 0  # Non dimensional pressure at reservoir.
 
@@ -173,18 +163,18 @@ Lambda = Lambda_list[0]
 B = B_list[0]
 E0 = E0_list[0]
 top_potential = -E0*z0/r0
-Chi = (h_Planck*k_prime)/(Lambda*k_B*vacuum_perm*eps_r)
-Phi = delta_G/(k_B*T)
+Chi = (inputs.h*inputs.k_prime)/(Lambda*inputs.k_B*inputs.vacuum_perm*inputs.eps_r)
+Phi = inputs.Solvation_energy/(inputs.k_B*T)
 
-# Define the constant inputs for the solver.
-inputs = {'Relative_perm': eps_r,
-          'Contact_line_radius': r0,
-          'Non_dimensional_temperature': T_h,
-          'Lambda': Lambda,
-          'Phi': Phi,
-          'B': B,
-          'Chi': Chi,
-          'Convection charge': 0}
+# Define the constant inputs for the electrostatics solver.
+inputs_elec = {'Relative_perm': inputs.eps_r,
+               'Contact_line_radius': r0,
+               'Non_dimensional_temperature': T_h,
+               'Lambda': Lambda,
+               'Phi': Phi,
+               'B': B,
+               'Chi': Chi,
+               'Convection charge': 0}
 
 # Define the boundary conditions.
 """
@@ -195,6 +185,8 @@ Notice the structure of the boundary conditions:
     3. A list where the first value is the value of the bc and the second
         element is the subdomain to which it belongs to.
 """
+top_potential = fn.Constant(-10.)
+ref_potential = fn.Constant(0.)
 boundary_conditions_elec = {'Top_Wall': {'Dirichlet': [top_potential, 'vacuum']},
                             'Inlet': {'Dirichlet': [ref_potential, 'liquid']},
                             'Tube_Wall_R': {'Dirichlet': [ref_potential, 'liquid']},
@@ -205,9 +197,9 @@ boundary_conditions_elec = {'Top_Wall': {'Dirichlet': [top_potential, 'vacuum']}
 
 
 # Initialize the Electrostatics class, loading constant parameters.
-Electrostatics = Poisson(inputs, boundary_conditions_elec, ofilename_.strip(),
-                         mesh_folder_path, restrictions_folder_path,
-                         checks_folder_path)
+Electrostatics = Poisson(inputs_elec, boundary_conditions_elec,
+                         ofilename_.strip(), mesh_folder_path,
+                         restrictions_folder_path, checks_folder_path)
 
 # Get the mesh object.
 mesh = Electrostatics.get_mesh()
@@ -345,14 +337,14 @@ plotpy.lineplot([(r_mids, cc_check)],
 
 # %% SOLVE STOKES EQUATION.
 # Define the required non dimensional parameters.
-k = k_0
-E_c = np.sqrt((4*gamma)/(r0*vacuum_perm))
-E_star = (4*np.pi*vacuum_perm*delta_G**2)/(1.60218e-19)**3
+k = inputs.k_0
+E_c = np.sqrt((4*inputs.gamma)/(r0*inputs.vacuum_perm))
+E_star = (4*np.pi*inputs.vacuum_perm*inputs.Solvation_energy**2)/(1.60218e-19)**3
 j_star = k*E_star/eps_r
-u_star = j_star/(rho_0*q_m)
+u_star = j_star/(inputs.rho_0*inputs.q_m)
 r_star = B*r0
-We = (rho_0*u_star**2*r_star)/(2*gamma)
-Ca = mu_0*u_star/(2*gamma)
+We = (inputs.rho_0*u_star**2*r_star)/(2*inputs.gamma)
+Ca = inputs.mu_0*u_star/(2*inputs.gamma)
 
 # Define the boundary conditions.
 boundary_conditions_fluids = {'Tube_Wall_R': {'Dirichlet':
