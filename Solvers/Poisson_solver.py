@@ -255,11 +255,12 @@ class Poisson(object):
         check_first = gmsh_handle.check_which_physical_first(self.filename,
                                                              self.meshpath)
 
-        # Check if the proper number of subdomains were defined in the .geo.
-        gmsh_handle.get_physical_surfaces(self.geo_file, self.meshpath)
+        # Get the names of the subdomain and perform some checks.
+        self.surfaces_names = gmsh_handle.get_physical_surfaces(self.geo_file,
+                                                                self.meshpath)
 
 
-        if check_first[1]:
+        if check_first[1]:  # This means that physical surfaces were defined before physical curves.
             self.lower_subdomain_id = 1
             self.upper_subdomain_id = 2
         else:
@@ -287,18 +288,12 @@ class Poisson(object):
         self.ds = fn.Measure('ds')(subdomain_data=self.boundaries)
         self.dS = fn.Measure('dS')(subdomain_data=self.boundaries)
 
-    def generate_restrictions(self, restrictions_names):
+    def generate_restrictions(self):
         """
         Generate the restrictions of the loaded subdomains, a restriction for
         the whole domain and one restriction for the interface. This is
         possible by making use of the multiphenics library:
             https://github.com/mathLab/multiphenics
-
-        Parameters
-        ----------
-        restrictions_names : array like
-            Variable containing the names of the restrictions, in the order in
-            which this methods defines the restrictions.
 
         Returns
         -------
@@ -326,10 +321,11 @@ class Poisson(object):
         self.restrictions_tuple = (self.lower_rtc, self.upper_rtc,
                                    self.domain_rtc, self.interface_rtc)
 
-        if not isinstance(restrictions_names, tuple):
-            self.restrictions_names = tuple(restrictions_names)
-        else:
-            self.restrictions_names = restrictions_names
+        aux_str = '_restriction'
+        self.restrictions_names = (self.surfaces_names[0].lower() + aux_str,
+                                   self.surfaces_names[1].lower() + aux_str,
+                                   'domain_restriction',
+                                   'interface_restriction')
 
         return self.lower_rtc, self.upper_rtc, self.domain_rtc, \
             self.interface_rtc
@@ -559,6 +555,7 @@ class Poisson(object):
         (phi, sigma) = phisigma.block_split()
         # --------------------------------------------------------------------
 
+        # Store the solution in the class object.
         self.phi = phi
         self.sigma = sigma
 
@@ -616,7 +613,13 @@ class Poisson(object):
         bcs_i = []
         for i in self.boundary_conditions:
             if 'Dirichlet' in self.boundary_conditions[i]:
-                sub_id = self.boundary_conditions[i]['Dirichlet'][1] - self.lower_subdomain_id
+                sub_id = self.boundary_conditions[i]['Dirichlet'][1]
+                if sub_id.lower() == self.surfaces_names[0].lower():
+                    sub_id = 0
+                elif sub_id.lower() == self.surfaces_names[1].lower():
+                    sub_id = 1
+                else:
+                    raise ValueError(f'Subdomain {sub_id} is not defined on the .geo file.')
                 bc_val = self.boundary_conditions[i]['Dirichlet'][0]
                 bc = mp.DirichletBC(W.sub(sub_id), bc_val, self.boundaries,
                                     self.boundaries_ids[i])
@@ -826,25 +829,13 @@ class Poisson(object):
 
         return sol[0]
 
-    @staticmethod
-    def get_electric_field(Potential, mesh, subdomains, subdomain_rtc,
-                           subdomain_id):
+    def get_electric_field(self, subdomain_id):
         """
         Get the electric field given the potential and project it into the
         specified subdomain using the block_project method.
 
         Parameters
         ----------
-        Potential : dolfin.function.function.Function
-            Dolfin/FEniCS function containing the potential information.
-        mesh : dolfin.cpp.mesh.Mesh
-            Mesh object.
-        subdomains : dolfin.cpp.mesh.MeshFunctionSizet
-            Dolfin object containing the information regarding the subdomains
-            of the mesh.
-        subdomain_rtc : multiphenics.mesh.mesh_restriction.MeshRestriction
-            Restriction of the subdomain where the electric field will be
-            projected.
         subdomain_id : int
             Subdomain identification number.
 
@@ -854,11 +845,22 @@ class Poisson(object):
             Dolfin/FEniCS function containing the electric field information.
 
         """
-        phi_sub = Poisson.block_project(Potential, mesh, subdomain_rtc,
-                                        subdomains, subdomain_id,
-                                        space_type='scalar')
+        if subdomain_id.lower() == self.surfaces_names[0].lower():
+            subdomain_id = self.lower_subdomain_id
+            phi_sub = Poisson.block_project(self.phi, self.mesh,
+                                            self.lower_rtc, self.subdomains,
+                                            subdomain_id, space_type='scalar')
+            rtc = self.lower_rtc
+        elif subdomain_id.lower() == self.surfaces_names[1].lower():
+            subdomain_id = self.upper_subdomain_id
+            phi_sub = Poisson.block_project(self.phi, self.mesh,
+                                            self.upper_rtc, self.subdomains,
+                                            subdomain_id, space_type='scalar')
+            rtc = self.upper_rtc
+        else:
+            raise ValueError(f'Valid subdomain ids are {self.surfaces_names[0]} and {self.surfaces_names[1]}. You introduced {subdomain_id}.')
         E_tensor = -fn.grad(phi_sub)
-        E = Poisson.block_project(E_tensor, mesh, subdomain_rtc, subdomains,
+        E = Poisson.block_project(E_tensor, self.mesh, rtc, self.subdomains,
                                   subdomain_id, space_type='vectorial')
         return E
 

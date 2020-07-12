@@ -865,26 +865,30 @@ class gmsh_handle(object):
             Name of the path of the folder where the mesh is stored.
         Returns
         -------
-        physical_surfaces: dict
-            Dictionary containing the physical surfaces (subdomains).
+        surfaces_names: list
+            List containing the names of the subdomains as specified by the
+            user on GMSH.
         """
         file = mesh_folder + '/' + filename
         f = open(file, 'r')
-        physical_surfaces = dict()
         # Define a pattern to catch all between parenthesis.
         regex_pattern = re.compile(r'\(([^\)]+)\)')
         found_surface = False
         no_surfaces = 0
+        surfaces_names = []
         for line in f:
             if re.findall('Physical Surface', line):
                 no_surfaces += 1
                 mo = regex_pattern.findall(line)
                 found_surface = True
-                # for string in mo:
-                #     key = string.split(',')[0]
-                #     value_str = string.split(',')[-1].replace(" ", '')
-                #     value = int(value_str)
-                #     physical_surfaces[key] = value
+                for string in mo:
+                    key = string.split(',')[0]
+                    # Get alphanumeric chars from the key.
+                    name = re.sub(r'\W+', '', key)
+                    if name == '':
+                        raise NameError(f'{name} is not a valid subdomain identifier. It must contain alphanumeric characters only.')
+                    surfaces_names.append(name)
+
         f.close()
 
         # Check if no physical surface was found.
@@ -895,7 +899,7 @@ class gmsh_handle(object):
         if no_surfaces > 2:
             raise ValueError(f'{no_surfaces} were found. Only 2 can be loaded.')
 
-        return physical_surfaces
+        return surfaces_names
 
     @staticmethod
     def check_modules():

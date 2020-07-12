@@ -195,13 +195,13 @@ Notice the structure of the boundary conditions:
     3. A list where the first value is the value of the bc and the second
         element is the subdomain to which it belongs to.
 """
-boundary_conditions_elec = {'Top_Wall': {'Dirichlet': [top_potential, 9]},
-                            'Inlet': {'Dirichlet': [ref_potential, 10]},
-                            'Tube_Wall_R': {'Dirichlet': [ref_potential, 10]},
-                            'Bottom_Wall': {'Dirichlet': [ref_potential, 9]},
-                            'Lateral_Wall_R': {'Neumann': 9},
-                            'Lateral_Wall_L': {'Neumann': 9},
-                            'Tube_Wall_L': {'Neumann': 9}}
+boundary_conditions_elec = {'Top_Wall': {'Dirichlet': [top_potential, 'vacuum']},
+                            'Inlet': {'Dirichlet': [ref_potential, 'liquid']},
+                            'Tube_Wall_R': {'Dirichlet': [ref_potential, 'liquid']},
+                            'Bottom_Wall': {'Dirichlet': [ref_potential, 'vacuum']},
+                            'Lateral_Wall_R': {'Neumann': 'vacuum'},
+                            'Lateral_Wall_L': {'Neumann': 'vacuum'},
+                            'Tube_Wall_L': {'Neumann': 'vacuum'}}
 
 
 # Initialize the Electrostatics class, loading constant parameters.
@@ -231,10 +231,8 @@ Electrostatics.write_check_files()
 
 # CREATE THE RESTRICTIONS.
 # Generate the restrictions.
-restrictions_names = ('vacuum_restriction', 'liquid_restriction',
-                      'domain_restriction', 'interface_restriction')
 vacuum_rtc, liquid_rtc, domain_rtc, meniscus_rtc = \
-    Electrostatics.generate_restrictions(restrictions_names)
+    Electrostatics.generate_restrictions()
 
 # Write out for simulation (.xml) and for visualization (.xdmf).
 """
@@ -285,16 +283,16 @@ At this step, from the potential obtained in previous steps we derive the
 electric fields at each of the subdomains. Moreover, we will obtain their
 normal components at the interface.
 """
-E_v = Poisson.get_electric_field(phi, mesh, subdomains, vacuum_rtc, 9)
-E_l = Poisson.get_electric_field(phi, mesh, subdomains, liquid_rtc, 10)
+E_v = Electrostatics.get_electric_field('vacuum')
+E_l = Electrostatics.get_electric_field('liquid')
 
 # Split the electric field into radial and axial components.
 E_v_r, E_v_z = Poisson.split_field_components(E_v, coords_nodes)
 E_l_r, E_l_z = Poisson.split_field_components(E_l, coords_nodes)
 
-n_l = fn.FacetNormal(mesh)
-n = n_l
-n_v = fn.as_vector((-n_l[0], -n_l[1]))
+n_v = fn.FacetNormal(mesh)
+n = n_v
+n_l = fn.as_vector((-n_v[0], -n_v[1]))
 
 E_v_n = Poisson.get_normal_field(n_v, E_v, mesh, boundaries, meniscus_rtc,
                                  boundaries_ids['Interface'], sign="-")
@@ -307,11 +305,11 @@ E_l_n_array = PostProcessing.extract_from_function(E_l_n, coords_mids)
 sigma_arr = PostProcessing.extract_from_function(sigma, coords_mids)
 
 # Compute the non dimensional evaporated charge and current.
-j_n_e_h = (sigma*T_h)/(eps_r*Chi) * fn.exp(-Phi/T_h * (
-            1-pow(B, 1/4)*fn.sqrt(fn.dot(-fn.grad(phi("-")), n("-")))))
-I_h = Poisson.get_nd_current(boundaries, boundaries_ids, j_n_e_h, r0)
+j_ev = (sigma*T_h)/(eps_r*Chi) * fn.exp(-Phi/T_h * (
+        1-pow(B, 1/4)*fn.sqrt(E_v_n)))
+I_h = Poisson.get_nd_current(boundaries, boundaries_ids, j_ev, r0)
 
-j_ev_arr = PostProcessing.extract_from_function(j_n_e_h, coords)
+j_ev_arr = PostProcessing.extract_from_function(j_ev, coords_mids)
 
 # %% DATA POSTPROCESSING.
 # Check charge conservation.
