@@ -246,7 +246,11 @@ Electrostatics.write_restrictions()
 
 # DEFINE THE MIDPOINTS OF THE FACETS ON THE INTERFACE.
 r_mids, z_mids = PostProcessing.get_midpoints_from_boundary(boundaries, boundaries_ids['Interface'])
-coords = [r_mids, z_mids]
+coords_mids = [r_mids, z_mids]
+r_nodes, z_nodes = PostProcessing.get_nodepoints_from_boundary(mesh,
+                                                               boundaries,
+                                                               boundaries_ids['Interface'])
+coords_nodes = [r_nodes, z_nodes]
 
 # SOLVE THE ELECTROSTATICS.
 # Check all the options available for the implemented solver.
@@ -285,22 +289,22 @@ E_v = Poisson.get_electric_field(phi, mesh, subdomains, vacuum_rtc, 9)
 E_l = Poisson.get_electric_field(phi, mesh, subdomains, liquid_rtc, 10)
 
 # Split the electric field into radial and axial components.
-E_v_r, E_v_z = Poisson.split_field_components(E_v, coords)
-E_l_r, E_l_z = Poisson.split_field_components(E_l, coords)
+E_v_r, E_v_z = Poisson.split_field_components(E_v, coords_nodes)
+E_l_r, E_l_z = Poisson.split_field_components(E_l, coords_nodes)
 
-n_v = fn.FacetNormal(mesh)
-n = n_v
-n_l = fn.as_vector((-n_v[0], -n_v[1]))
+n_l = fn.FacetNormal(mesh)
+n = n_l
+n_v = fn.as_vector((-n_l[0], -n_l[1]))
 
 E_v_n = Poisson.get_normal_field(n_v, E_v, mesh, boundaries, meniscus_rtc,
                                  boundaries_ids['Interface'], sign="-")
-E_v_n_array = PostProcessing.extract_from_function(E_v_n, coords)
+E_v_n_array = PostProcessing.extract_from_function(E_v_n, coords_mids)
 
 E_l_n = Poisson.get_normal_field(n_l, E_l, mesh, boundaries, meniscus_rtc,
                                  boundaries_ids['Interface'], sign="+")
-E_l_n_array = PostProcessing.extract_from_function(E_l_n, coords)
+E_l_n_array = PostProcessing.extract_from_function(E_l_n, coords_mids)
 
-sigma_arr = PostProcessing.extract_from_function(sigma, coords)
+sigma_arr = PostProcessing.extract_from_function(sigma, coords_mids)
 
 # Compute the non dimensional evaporated charge and current.
 j_n_e_h = (sigma*T_h)/(eps_r*Chi) * fn.exp(-Phi/T_h * (
@@ -314,14 +318,14 @@ j_ev_arr = PostProcessing.extract_from_function(j_n_e_h, coords)
 cc_check = Electrostatics.check_charge_conservation(coords)
 
 # Plot.
-plotpy.lineplot([(r_mids, E_v_r, r'Radial ($\hat{r}$)'),
-                 (r_mids, E_v_z, r'Axial ($\hat{z}$)')],
+plotpy.lineplot([(r_nodes, E_v_r, r'Radial ($\hat{r}$)'),
+                 (r_nodes, E_v_z, r'Axial ($\hat{z}$)')],
                 xlabel=x_label, ylabel=y_label,
                 fig_title='Components of the electric field at vacuum',
                 legend_title='Field Components')
 
-plotpy.lineplot([(r_mids, E_l_r, r'Radial ($\hat{r}$)'),
-                 (r_mids, E_l_z, r'Axial ($\hat{z}$)')],
+plotpy.lineplot([(r_nodes, E_l_r, r'Radial ($\hat{r}$)'),
+                 (r_nodes, E_l_z, r'Axial ($\hat{z}$)')],
                 xlabel=x_label, ylabel=y_label,
                 fig_title='Components of the electric field at liquid',
                 legend_title='Field Components')

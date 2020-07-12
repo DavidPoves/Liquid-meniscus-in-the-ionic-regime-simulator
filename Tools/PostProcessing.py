@@ -376,7 +376,7 @@ class PostProcessing(object):
         coords_r = np.sort(coords_r)
         coords_z = np.sort(coords_z)[::-1]
 
-        return coords_r, coords_z, dofs_bc
+        return coords_r, coords_z
 
     @staticmethod
     def create_FEniCSExpression_from_function(fun):
