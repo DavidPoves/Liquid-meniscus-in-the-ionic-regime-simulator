@@ -1013,7 +1013,7 @@ class Poisson(object):
         j_cond = (1+self.Lambda*(self.T_h-1))*E_l_n
 
         # Evaluate the previous expression at interface coordinates.
-        charge_cons = (kel - j_cond)/kel
+        charge_cons = (kel - j_cond)
 
         # Project the solution.
         charge_cons = Poisson.block_project(charge_cons, self.mesh,
