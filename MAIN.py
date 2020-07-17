@@ -91,7 +91,7 @@ plotpy = PlotPy(latex=True, fontsize=12., figsize=(12., 7.),
 LiquidInps = Liquid_Properties(relative_permittivity=10)
 LiquidInps.EMIBF4()  # Load EMIBF4 liquid properties.
 
-T = 298.15  # Reference temperature [K]
+T_0 = 298.15  # Reference temperature [K]
 
 # Define values for simulation.
 r0_list = [1e-6, 2.5e-6, 4e-6, 4.5e-6, 5e-6]
@@ -159,7 +159,7 @@ Lambda = Lambda_list[0]
 B = B_list[0]
 E0 = E0_list[0]
 Chi = (LiquidInps.h*LiquidInps.k_prime)/(Lambda*LiquidInps.k_B*LiquidInps.vacuum_perm*LiquidInps.eps_r)
-Phi = LiquidInps.Solvation_energy/(LiquidInps.k_B*T)
+Phi = LiquidInps.Solvation_energy/(LiquidInps.k_B*T_0*T_h)
 
 # Define the constant inputs for the solver.
 inputs = {'Relative_perm': LiquidInps.eps_r,
@@ -191,11 +191,17 @@ boundary_conditions_elec = {'Top_Wall': {'Dirichlet': [top_potential, 'vacuum']}
                             'Lateral_Wall_L': {'Neumann': 'vacuum'},
                             'Tube_Wall_L': {'Neumann': 'vacuum'}}
 
+bcs_elec_init = {'Top_Wall': {'Dirichlet': [top_potential, 'vacuum']},
+                 'Interface': {'Dirichlet': [ref_potential, 'vacuum']},
+                 'Bottom_Wall': {'Dirichlet': [ref_potential, 'vacuum']},
+                 }
+
 
 # Initialize the Electrostatics class, loading constant parameters.
 Electrostatics = Poisson(inputs, boundary_conditions_elec, ofilename_.strip(),
                          mesh_folder_path, restrictions_folder_path,
-                         checks_folder_path)
+                         checks_folder_path,
+                         boundary_conditions_init=bcs_elec_init)
 
 # Get the mesh object.
 mesh = Electrostatics.get_mesh()
@@ -258,7 +264,7 @@ technique at:
 https://en.wikipedia.org/wiki/Backtracking_line_search
 """
 snes_solver_parameters = {"snes_solver": {"linear_solver": "mumps",
-                                          "maximum_iterations": 50,
+                                          "maximum_iterations": 200,
                                           "report": True,
                                           "error_on_nonconvergence": True,
                                           'line_search': 'bt',
@@ -290,18 +296,22 @@ E_l_n = Poisson.get_normal_field(n_l, E_l, mesh, boundaries, meniscus_rtc,
                                  boundaries_ids['Interface'], sign="+")
 E_l_n_array = PostProcessing.extract_from_function(E_l_n, coords_mids)
 
+# Compute the non dimensional evaporated charge and current.
+K = 1+Lambda*(T_h - 1)
+
 sigma_arr = PostProcessing.extract_from_function(sigma, coords_mids)
 
-# Compute the non dimensional evaporated charge and current.
 j_ev = (sigma*T_h)/(LiquidInps.eps_r*Chi) * fn.exp(-Phi/T_h * (
         1-pow(B, 1/4)*fn.sqrt(E_v_n)))
-j_cond = (1+Electrostatics.Lambda*(Electrostatics.T_h-1))*E_l_n
+j_cond = K*E_l_n
 I_h = Poisson.get_nd_current(boundaries, boundaries_ids, j_ev, r0)
 
 j_ev_arr = PostProcessing.extract_from_function(j_ev, coords_mids)
 j_cond_arr = PostProcessing.extract_from_function(j_cond, coords_mids)
 
 # %% DATA POSTPROCESSING.
+# Check charge conservation.
+
 # Plot.
 plotpy.lineplot([(r_nodes, E_v_r, r'Radial ($\hat{r}$)'),
                  (r_nodes, E_v_z, r'Axial ($\hat{z}$)')],

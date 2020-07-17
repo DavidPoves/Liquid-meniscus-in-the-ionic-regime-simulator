@@ -71,7 +71,7 @@ class Liquid_Properties(object):
         # Obtained from: Ion evaporation from Taylor cones of propylene
         carbonate mixed with ionic liquids, page 453
         """
-        self.Solvation_energy= 1.8*1.602176565e-19  # [eV -> J]
+        self.Solvation_energy= 1*1.602176565e-19  # [eV -> J]
 
         # Thermal conductivity of the fluid [W/m-K] (at 300K)
         """

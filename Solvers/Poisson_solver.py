@@ -161,7 +161,6 @@ class Poisson(object):
         noise).
         """
         # self.mesh.smooth(50)  # 50 are the iterations to smooth the mesh.
-        # self.mesh.smooth_boundary(50, True)
 
         # Obtain the dimension of the created mesh.
         D = self.mesh.topology().dim()
@@ -491,16 +490,16 @@ class Poisson(object):
         r = fn.SpatialCoordinate(self.mesh)[0]
         K = 1+self.Lambda*(self.T_h - 1)
 
-        E_v_n = fn.dot(-fn.grad(phi("-")), n("-"))*self.dx(self.lower_subdomain_id)
+        E_v_n = fn.dot(-fn.grad(phi("-")), n("-"))
 
-        def expFun(phi):
+        def expFun():
             sqrterm = E_v_n
-            expterm = self.Phi/self.T_h*(1-pow(self.B, 0.25)*fn.sqrt(sqrterm))
+            expterm = (self.Phi/self.T_h)*(1-pow(self.B, 0.25)*fn.sqrt(sqrterm))
             return fn.exp(expterm)
 
-        def sigma_fun(phi):
+        def sigma_fun():
             num = K*E_v_n + self.eps_r*self.j_conv
-            den = K + self.T_h/self.Chi*expFun(phi)
+            den = K + (self.T_h/self.Chi)*expFun()
             return num/den
 
         # Define the variational form.
@@ -508,7 +507,7 @@ class Poisson(object):
         liquid_int = self.eps_r*r*fn.inner(fn.grad(phi), fn.grad(v))*self.dx(self.upper_subdomain_id)
 
         F = [vacuum_int + liquid_int - r*sigma("-")*v("-")*self.dS,
-             r*sigma_fun(phi)*l("-")*self.dS - r*sigma("-")*l("-")*self.dS]
+             r*sigma_fun()*l("-")*self.dS - r*sigma("-")*l("-")*self.dS]
 
         J = mp.block_derivative(F, phisigma, dphisigma)
 
@@ -538,7 +537,9 @@ class Poisson(object):
             """
             phiv, phil, sigma_init = self.solve_initial_problem()
             phi.assign(fn.project(phiv+phil, V))
-            sigma.assign(sigma_init)
+            # phiv = self.solve_initial_problem_2()
+            # phi.assign(phiv)
+            # sigma.assign(sigma_init)
         else:
             phi.assign(kwargs.get('Initial Potential'))
             sigma.assign(kwargs.get('sigma'))
@@ -560,6 +561,16 @@ class Poisson(object):
         # Store the solution in the class object.
         self.phi = phi
         self.sigma = sigma
+
+        # Compute the potentials of each of the subdomains.
+        self.phiv = Poisson.block_project(self.phi, self.mesh, self.lower_rtc,
+                                          self.subdomains,
+                                          self.lower_subdomain_id,
+                                          space_type='scalar')
+        self.phil = Poisson.block_project(self.phi, self.mesh, self.upper_rtc,
+                                          self.subdomains,
+                                          self.upper_subdomain_id,
+                                          space_type='scalar')
 
         return phi, sigma
 
@@ -647,6 +658,44 @@ class Poisson(object):
         (phiv, phil, sigma) = sol.block_split()
 
         return phiv, phil, sigma
+
+    def solve_initial_problem_2(self):
+
+        V = fn.FunctionSpace(self.mesh, 'Lagrange', 2)
+        restrictions_init = [self.lower_rtc]
+        W = mp.BlockFunctionSpace([V], restrict=restrictions_init)
+
+        u, = mp.BlockTrialFunction(W)
+        v, = mp.BlockTestFunction(W)
+
+        r = fn.SpatialCoordinate(self.mesh)[0]
+
+        aa = [[r*fn.inner(fn.grad(u), fn.grad(v))*self.dx(self.lower_subdomain_id)]]
+        bb = [fn.Constant(0.)*v*self.dx(self.lower_subdomain_id)]
+
+        AA = mp.block_assemble(aa)
+        BB = mp.block_assemble(bb)
+
+        bcs_block = []
+        for i in self.boundary_conditions_init:
+            if 'Dirichlet' in self.boundary_conditions_init[i]:
+                bc_val = self.boundary_conditions_init[i]['Dirichlet'][0]
+                bc = mp.DirichletBC(W.sub(0), bc_val, self.boundaries,
+                                    self.boundaries_ids[i])
+                # Check the created boundary condition.
+                assert len(bc.get_boundary_values()) > 0., f'Wrongly defined boundary {i}'
+                bcs_block.append(bc)
+
+        bcs_block = mp.BlockDirichletBC([bcs_block])
+
+        bcs_block.apply(AA)
+        bcs_block.apply(BB)
+
+        phiv = mp.BlockFunction(W)
+
+        mp.block_solve(AA, phiv.block_vector(), BB)
+
+        return phiv[0]
 
     @staticmethod
     def check_solver_options():
@@ -849,15 +898,11 @@ class Poisson(object):
         """
         if subdomain_id.lower() == self.surfaces_names[0].lower():
             subdomain_id = self.lower_subdomain_id
-            phi_sub = Poisson.block_project(self.phi, self.mesh,
-                                            self.lower_rtc, self.subdomains,
-                                            subdomain_id, space_type='scalar')
+            phi_sub = self.phiv
             rtc = self.lower_rtc
         elif subdomain_id.lower() == self.surfaces_names[1].lower():
             subdomain_id = self.upper_subdomain_id
-            phi_sub = Poisson.block_project(self.phi, self.mesh,
-                                            self.upper_rtc, self.subdomains,
-                                            subdomain_id, space_type='scalar')
+            phi_sub = self.phil
             rtc = self.upper_rtc
         else:
             raise ValueError(f'Valid subdomain ids are {self.surfaces_names[0]} and {self.surfaces_names[1]}. You introduced {subdomain_id}.')
@@ -954,3 +999,14 @@ class Poisson(object):
         den = r0**2
 
         return num/den
+
+    def check_charge_conservation(self):
+        n = fn.FacetNormal(self.mesh)
+        E_v_n = fn.dot(-fn.grad(self.phiv), n)
+        E_l_n = (E_v_n - self.sigma)/self.eps_r
+
+        j_ev = (self.sigma*self.T_h)/(self.eps_r*self.Chi) * fn.exp(-self.Phi/self.T_h * (
+        1-pow(self.B, 1/4)*fn.sqrt(E_v_n)))
+        j_cond = (1+self.Lambda*(self.T_h-1))*E_l_n
+
+        return j_ev - j_cond
