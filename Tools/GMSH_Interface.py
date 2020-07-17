@@ -1,7 +1,8 @@
-from py2gmsh import (Mesh, Entity)
+import tkinter as tk
+from tkinter import filedialog
+
 import numpy as np
-import sys
-from PyQt5.QtWidgets import QFileDialog, QApplication
+from py2gmsh import (Mesh, Entity)
 
 
 class GMSHInterface(object):
@@ -11,10 +12,9 @@ class GMSHInterface(object):
         return
 
     def path_selection(self):
-        QApplication(sys.argv)  # Create an application before calling the directory
-        QApplication.setStyle('fusion')
-        dialog = QFileDialog()
-        self.geoPath = dialog.getExistingDirectory(dialog, caption='Choose Path to save .geo file...')
+        root = tk.Tk()
+        root.withdraw()
+        self.geoPath = filedialog.askdirectory()
 
     def geometry_generator(self, interface_fun=None, interface_fun_r=None,
                            interface_fun_z=None, number_points=800, factor=10,
