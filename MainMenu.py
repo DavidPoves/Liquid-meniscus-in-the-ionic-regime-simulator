@@ -147,6 +147,7 @@ class GeometryGeneration(tk.Frame):
 			if self.r_fun.get() == '' or self.z_fun.get() == '':
 				messagebox.showwarning(title='Error', message='One of the functions was not introduced.\n'
 				                                              'Introduce a valid function.')
+				return
 		elif self.user_choice.get() == self.default_choice:
 			messagebox.showwarning(title='Error', message='Please, select an option before proceeding.')
 			return
