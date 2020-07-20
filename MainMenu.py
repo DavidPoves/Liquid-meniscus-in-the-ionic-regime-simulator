@@ -4,7 +4,6 @@ from tkinter import messagebox
 
 import os
 import numpy as np
-import re
 
 from Tools.GMSH_Interface import GMSHInterface
 from Tools.CreateMesh import str_2_num
