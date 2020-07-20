@@ -188,6 +188,8 @@ class GMSHInterface(object):
         ind_var = ind_var.replace('t r u n c', '')
         ind_var = ind_var.replace('r o u n d', '')
         ind_var = ind_var.replace('s g n', '')
+        ind_var = ind_var.replace('P I', '')
+        ind_var = ind_var.replace('E', '')
 
         # Obtain the independent variable.
         aux = []

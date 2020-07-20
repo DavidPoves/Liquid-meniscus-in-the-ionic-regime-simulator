@@ -2,12 +2,20 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter import messagebox
 
+from matplotlib.backends.backend_tkagg import (
+	FigureCanvasTkAgg, NavigationToolbar2Tk)
+# Implement the default Matplotlib key bindings.
+from matplotlib.backend_bases import key_press_handler
+from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
+
 import os
 import numpy as np
 
 from Tools.GMSH_Interface import GMSHInterface
 from Tools.CreateMesh import str_2_num
 from Tools.ToolTip_creator import CreateToolTip
+import Tools.PredefinedFuns as PreFuns
 
 
 class MainMenu(tk.Frame):
@@ -78,7 +86,8 @@ class GeometryGeneration(tk.Frame):
 		self.angle_unit = 'radians'
 
 		# Create the option menu.
-		self.options_dict = {'z = f(r)': 'z = f(r)', 'Expressions for r and z': 'Expressions for r and z'}
+		self.options_dict = {'z = f(r)': 'z = f(r)', 'Expressions for r and z': 'Expressions for r and z',
+		                     'Predefined function': 'Predefined function'}
 		self.options_list = list(self.options_dict.values())
 		option_menu = tk.OptionMenu(master2, self.user_choice, *self.options_dict, command=self.option_fun)
 		option_menu.grid(row=0, column=1, padx=10, pady=10)
@@ -100,7 +109,7 @@ class GeometryGeneration(tk.Frame):
 		self.control_boxes()
 
 	def control_boxes(self):
-		tk.Entry(master=self.master2, textvariable=self.initial_ind_coord, state=tk.DISABLED,justify='center').grid(
+		tk.Entry(master=self.master2, textvariable=self.initial_ind_coord, state=tk.DISABLED, justify='center').grid(
 			row=5, column=1, padx=10, pady=10)
 		tk.Entry(master=self.master2, textvariable=self.final_ind_coord, justify='center').grid(row=6, column=1,
 		                                                                                        padx=10, pady=10)
@@ -119,7 +128,19 @@ class GeometryGeneration(tk.Frame):
 			tk.Entry(master=self.master2, textvariable=self.r_fun, state=tk.DISABLED, justify='center').grid(
 				row=2, column=1, padx=10, pady=10)
 			tk.Entry(master=self.master2, textvariable=self.z_fun, state=tk.DISABLED, justify='center').grid(
-				row=3, column=1,  padx=10, pady=10)
+				row=3, column=1, padx=10, pady=10)
+		elif self.user_choice.get() == self.options_list[-1]:
+			fun_data = PredefinedFunctions(self)
+			if fun_data.user_fun.get() == 'Half Taylor Cone':
+				tk.Entry(master=self.master2, textvariable=self.z_of_r, state=tk.DISABLED, justify='center').grid(
+					row=1, column=1, padx=10, pady=10)
+				self.r_fun.set('((1-2*s)*1)/(1-2*s*(1-s)*(1-20))')
+				self.z_fun.set('(2*(1-s)*s*20*(1/tan(49.3))*1)/(1-2*s*(1-s)*(1-20))')
+				tk.Entry(master=self.master2, textvariable=self.r_fun, justify='center').grid(row=2, column=1,
+				                                                                              padx=10, pady=10)
+				tk.Entry(master=self.master2, textvariable=self.z_fun, justify='center').grid(row=3, column=1,
+				                                                                              padx=10, pady=10)
+				self.degrees_var.set(True)
 		else:
 			tk.Entry(master=self.master2, textvariable=self.z_of_r, state=tk.DISABLED, justify='center').grid(
 				row=1, column=1, padx=10, pady=10)
@@ -168,6 +189,121 @@ class GeometryGeneration(tk.Frame):
 			geo_gen.geometry_generator(interface_fun_r=self.r_fun.get(), interface_fun_z=self.z_fun.get(),
 			                           independent_param=base_data, angle_unit=self.angle_unit)
 		geo_gen.mesh_generation()
+
+
+class PredefinedFunctions(tk.Frame):
+	def __init__(self, input_data):
+		masterPlot = tk.Tk()
+		masterPlot.title('Browse predefined functions.')
+		tk.Frame.__init__(self, masterPlot)
+		self.masterPlot = masterPlot
+		self.geo_input = input_data
+		self.fig_pos = 0
+		self.fig = None
+		self.canvas = None
+		self.toolbar = None
+
+		tk.Label(master=masterPlot, text='Select a predefined function.').pack()
+
+		# Create an option Menu.
+		predef_funs_show = {'Half Taylor Cone': 'Taylor Cone', 'Cosine Function': 'Cosine Function',
+		                    'Parabolic Function': 'Parabolic Function', 'Straight Line': 'Straight Line'}
+		self.predef_funs = {'Half Taylor Cone': PreFuns.TaylorCone,
+		                    'Cosine Function': PreFuns.CosineFunction,
+		                    'Parabolic Function': PreFuns.ParabolicFunction,
+		                    'Straight Line': PreFuns.StraightLine
+		                    }
+		self.user_fun = tk.StringVar()
+		self.user_fun.set('Select a function.')
+		self.default_user_fun = self.user_fun.get()
+
+		opts_menu = tk.OptionMenu(self.masterPlot, self.user_fun, *predef_funs_show, command=self.plot_option)
+		opts_menu.pack()
+		opts_menu.configure(foreground='BLACK', activeforeground='BLACK')
+
+		close_but = tk.Button(self.masterPlot, text='Save choice', command=self.save)
+		close_but.pack()
+		close_but.configure(foreground='BLACK', activeforeground='BLACK')
+
+	def plot_option(self, value):
+		if self.user_fun.get() == self.default_user_fun:
+			messagebox.showwarning(title='Select a function', text='Please, select a function before proceeding.')
+		else:
+			if self.fig_pos == 0:
+				self.fig = Figure(figsize=(5, 4), dpi=100)
+			else:
+				# Eliminate the previous figure to avoid overlapping.
+				self.fig.clf()
+				self.canvas.get_tk_widget().destroy()
+				self.toolbar.destroy()
+			self.plot()
+
+	def plot(self):
+		if self.user_fun.get() == 'Half Taylor Cone':
+			var = np.linspace(str_2_num(self.geo_input.initial_ind_coord.get()),
+			                  str_2_num(self.geo_input.final_ind_coord.get())/2,
+			                  int(str_2_num(self.geo_input.number_points.get())))
+		else:
+			var = np.linspace(str_2_num(self.geo_input.initial_ind_coord.get()),
+			                  str_2_num(self.geo_input.final_ind_coord.get()),
+			                  int(str_2_num(self.geo_input.number_points.get())))
+		r, z = self.predef_funs.get(self.user_fun.get())(var)
+		self.fig_pos += 1
+		ax = self.fig.add_subplot()
+		ax.plot(r, z)
+		self.fig.suptitle(self.user_fun.get())
+
+		self.canvas = FigureCanvasTkAgg(self.fig, master=self.masterPlot)  # A tk.DrawingArea.
+		self.canvas.draw()
+		self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+
+		self.toolbar = NavigationToolbar2Tk(self.canvas, self.masterPlot)
+		self.toolbar.update()
+		self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+
+	def save(self):
+		# Load the chosen function into the Geometry menu.
+		if self.user_fun.get() == 'Half Taylor Cone':
+			self.geo_input.r_fun.set('((1-2*s)*1)/(1-2*s*(1-s)*(1-20))')
+			self.geo_input.z_fun.set('(2*(1-s)*s*20*(1/tan(49.3))*1)/(1-2*s*(1-s)*(1-20))')
+			self.geo_input.final_ind_coord.set('0.5')
+			self.geo_input.degrees_var.set(True)
+			tk.Entry(master=self.geo_input.master2, textvariable=self.geo_input.r_fun, justify='center').grid(
+				row=2, column=1, padx=10, pady=10)
+			tk.Entry(master=self.geo_input.master2, textvariable=self.geo_input.z_fun, justify='center').grid(
+				row=3, column=1, padx=10, pady=10)
+			tk.Entry(master=self.geo_input.master2, textvariable=self.geo_input.z_of_r, state=tk.DISABLED,
+			         justify='center').grid(row=1, column=1, padx=10, pady=10)
+		elif self.user_fun.get() == 'Cosine Function':
+			self.geo_input.z_of_r.set('0.5*cos(PI/2 * r)')
+			tk.Entry(master=self.geo_input.master2, textvariable=self.geo_input.r_fun, state=tk.DISABLED,
+			         justify='center').grid(row=2, column=1, padx=10, pady=10)
+			tk.Entry(master=self.geo_input.master2, textvariable=self.geo_input.z_fun, state=tk.DISABLED,
+			         justify='center').grid(row=3, column=1, padx=10, pady=10)
+			tk.Entry(master=self.geo_input.master2, textvariable=self.geo_input.z_of_r, state=tk.NORMAL,
+			         justify='center').grid(row=1, column=1, padx=10, pady=10)
+			degrees_check = tk.Checkbutton(master=self.geo_input.master2, variable=self.geo_input.degrees_var,
+			                               text='Degrees?', state=tk.DISABLED,
+			                               command=self.geo_input.check_angle_units)
+			degrees_check.grid(row=7, column=1, padx=10, pady=10)
+			CreateToolTip(degrees_check, 'If any angle is introduced, check this option to set\n'
+			                             'degrees as the unit to be used. Otherwise, radians\n'
+			                             'will be used.\n'
+			                             'Note: Ignore this option if no angles are introduced.')
+		elif self.user_fun.get() == 'Parabolic Function' or self.user_fun.get() == 'Straight Line':
+			tk.Entry(master=self.geo_input.master2, textvariable=self.geo_input.r_fun, state=tk.DISABLED,
+			         justify='center').grid(row=2, column=1, padx=10, pady=10)
+			tk.Entry(master=self.geo_input.master2, textvariable=self.geo_input.z_fun, state=tk.DISABLED,
+			         justify='center').grid(row=3, column=1, padx=10, pady=10)
+			if self.user_fun.get() == 'Parabolic Function':
+				a = -0.5 / (1 - 0) ** 2
+				self.geo_input.z_of_r.set(f'{str(a)}*(r-0)^2 + 0.5')
+			if self.user_fun.get() == 'Straight Line':
+				self.geo_input.z_of_r.set('0.5*(1-r)')
+			tk.Entry(master=self.geo_input.master2, textvariable=self.geo_input.z_of_r, state=tk.NORMAL,
+			         justify='center').grid(row=1, column=1, padx=10, pady=10)
+
+		self.masterPlot.destroy()
 
 
 def run_main_menu():
