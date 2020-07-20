@@ -15,14 +15,19 @@
 
 # Import the libraries.
 import os
-from Input_Parameters import Liquid_Properties
+
 # from Solvers.Poisson_solver import Poisson
 # from Solvers.NS_Solver import Navier_Stokes as NS
 import fenics as fn
 import numpy as np
+
+from Input_Parameters import Liquid_Properties
 from Tools.PlotPy import PlotPy
 from Tools.PostProcessing import PostProcessing
-import gmsh_api.gmsh as gmsh  # pip install gmsh_api
+from Tools.MeshConverter import msh2xml
+
+from MainMenu import run_main_menu
+
 
 
 """
@@ -86,7 +91,7 @@ P_r_h = 0  # Non dimensional pressure at reservoir.
 """
 From version of GMSH 3.0 upwards, the format in which the mesh is saved has
 changed, and it is not compatible with the format that dolfin-converter is
-expecting to recieve. Therefore, the GMSH 2.0 format is required. In order to
+expecting to receive. Therefore, the GMSH 2.0 format is required. In order to
 do so, when the mesh has already been defined in GMSH, go to:
 File > Export > name_of_file.msh and save the file as ASCII v2. In that way,
 dolfin-converter will be able to transform the .msh file into .xml, the
@@ -95,45 +100,28 @@ code.
 """
 
 # Call the main menu (main GUI).
+app = run_main_menu()
 
+# Get the name of the mesh file.
+filepath = app.msh_filename
+filename = filepath.split('/')[-1]
 
 # Introduce the number of meniscus points.
 N = 800
 
 # Create the folders in which the outputs will be stored.
-root_folder = os.getcwd()
-mesh_folder_name = 'MESH OBJECTS'
-mesh_folder_path = root_folder + '/' + mesh_folder_name
+mesh_folder_path = '/'.join(filepath.split('/')[:-1])
 
+root_folder = os.getcwd()
 restrictions_folder_name = 'RESTRICTIONS'
 restrictions_folder_path = root_folder + '/' + restrictions_folder_name
 
 checks_folder_name = 'CHECKS'
 checks_folder_path = root_folder + '/' + checks_folder_name
 
-# Open the desired file, whose name is given by the B parameter.
-B_file = B_list[0]
-B_id = str(B_file).split('.')
-separator = ''
-B_id = separator.join(B_id)
-name = 'B_' + B_id + '_N_' + str(N)
-
-# Generate the .msh file from the geo file.
-Mesh_generator(mesh_folder_path, name)
-
-ofilename = name + '.xml'
-ifilename_ = name + '.msh' + ' '
-ofilename_ = ofilename + ' '  # Formatting for next command.
-input_str = "dolfin-convert " + ifilename_ + ofilename_
-
-"""
-Next, we call the dolfin-converter, which will transform the generated
-.msh file into a readable .xml file, which is the extension accepted by
-FEniCS and multiphenics.
-"""
-os.chdir(mesh_folder_path)
-os.system(input_str)  # Call the dolfin-converter
-os.chdir(root_folder)
+# Call the dolfin-converter if necessary.
+if filename.split('.')[-1] != 'xml':
+    filename = msh2xml(filename, root_folder, mesh_folder_path)
 
 # %% ELECTROSTATICS.
 # Define the values to be used for the simulation.
@@ -183,7 +171,7 @@ bcs_elec_init = {'Top_Wall': {'Dirichlet': [top_potential, 'vacuum']},
 
 
 # Initialize the Electrostatics class, loading constant parameters.
-Electrostatics = Poisson(inputs, boundary_conditions_elec, ofilename_.strip(),
+Electrostatics = Poisson(inputs, boundary_conditions_elec, filename,
                          mesh_folder_path, restrictions_folder_path,
                          checks_folder_path,
                          boundary_conditions_init=bcs_elec_init)

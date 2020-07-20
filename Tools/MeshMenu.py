@@ -1,6 +1,6 @@
 from tkinter import *
 
-from Tools.CreateMesh import create_mesh
+from Tools.CreateMesh import create_mesh, write_mesh
 from Tools.ToolTip_creator import CreateToolTip
 
 """
@@ -102,7 +102,7 @@ class MeshApp(Frame):
         save_close_but.configure(foreground='BLACK', activeforeground='BLACK')
 
         # ADD A PREVIEW BUTTON.
-        preview_but = Button(master3, text='Preview Mesh', command=lambda: create_mesh(mesh, self, 'temp', preview=True))
+        preview_but = Button(master3, text='Preview Mesh', command=lambda: MeshApp.preview_fun(mesh, self, 'temp', preview=True))
         preview_but.grid(row=7, column=3)
         preview_but.configure(foreground='BLACK', activeforeground='BLACK')
 
@@ -137,6 +137,11 @@ class MeshApp(Frame):
             Entry(textvariable=self.min_element_size, justify='center').grid(row=2, column=1, padx=10, pady=10)
             Entry(textvariable=self.length_from_curvature, justify='center').grid(row=3, column=1, padx=10, pady=10)
             Entry(textvariable=self.length_extend, justify='center').grid(row=4, column=1, padx=10, pady=10)
+
+    @staticmethod
+    def preview_fun(mesh, mesh_options, filename, preview=False):
+        geo_filename = create_mesh(mesh, mesh_options, filename)
+        write_mesh(geo_filename, preview)
 
 
 def run_app(mesh=None):

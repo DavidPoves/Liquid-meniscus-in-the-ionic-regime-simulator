@@ -1,5 +1,5 @@
 from Tools.MeshMenu import run_app
-from Tools.CreateMesh import create_mesh, str_2_num
+from Tools.CreateMesh import create_mesh, write_mesh
 
 import numpy as np
 import re
@@ -426,7 +426,9 @@ class GMSHInterface(object):
         app = run_app(self.my_mesh)
 
         # Create the mesh.
-        create_mesh(self.my_mesh, app, self.filename)
+        self.geo_filename = create_mesh(self.my_mesh, app, self.filename)
+        self.mesh_filename = write_mesh(self.geo_filename)
+        return self.mesh_filename
 
 # %% TEST THE CLASS.
 

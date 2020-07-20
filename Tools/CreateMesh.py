@@ -97,7 +97,7 @@ def open_gmsh(filename):
         subprocess.call(['open', filename])
 
 
-def create_mesh(mesh, mesh_options, filename, preview=False):
+def create_mesh(mesh, mesh_options, filename):
 
     # Translate the inputs from the GUI.
     mesh_options = translate_inputs(mesh_options)
@@ -123,6 +123,10 @@ def create_mesh(mesh, mesh_options, filename, preview=False):
         filename = save_file().name
     mesh.writeGeo(filename)
 
+    return filename
+
+
+def write_mesh(geo_filename, preview=False):
     # Initialize the gmsh api.
     gmsh.initialize()
 
@@ -130,11 +134,11 @@ def create_mesh(mesh, mesh_options, filename, preview=False):
     gmsh.option.setNumber("Mesh.MshFileVersion", 2.)
 
     # Re-open the file.
-    gmsh.open(filename)
+    gmsh.open(geo_filename)
 
     # Generate the 2D mesh.
     gmsh.model.mesh.generate(2)  # 2 indicating 2 dimensions.
-    msh_filename = filename.split('.geo')[0] + '.msh'
+    msh_filename = geo_filename.split('.geo')[0] + '.msh'
     gmsh.write(msh_filename)
 
     # Finalize the gmsh processes.
@@ -142,3 +146,5 @@ def create_mesh(mesh, mesh_options, filename, preview=False):
 
     if preview:
         open_gmsh(msh_filename)
+
+    return msh_filename

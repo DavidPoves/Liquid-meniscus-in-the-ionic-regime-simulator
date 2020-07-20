@@ -2,18 +2,14 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter import messagebox
 
-from matplotlib.backends.backend_tkagg import (
-	FigureCanvasTkAgg, NavigationToolbar2Tk)
-# Implement the default Matplotlib key bindings.
-from matplotlib.backend_bases import key_press_handler
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
 
 import os
 import numpy as np
 
 from Tools.GMSH_Interface import GMSHInterface
-from Tools.CreateMesh import str_2_num
+from Tools.CreateMesh import str_2_num, write_mesh
 from Tools.ToolTip_creator import CreateToolTip
 import Tools.PredefinedFuns as PreFuns
 
@@ -23,7 +19,7 @@ class MainMenu(tk.Frame):
 		tk.Frame.__init__(self, master)
 
 		# Create the options buttons.
-		load_button = tk.Button(master, text='Load Geometry/Mesh', command=lambda: MainMenu.load_geometry_mesh(master))
+		load_button = tk.Button(master, text='Load Geometry/Mesh', command=lambda: self.load_geometry_mesh(master))
 		load_button.grid(row=1, column=0, padx=10, pady=10)
 		load_button.configure(foreground='BLACK', activeforeground='BLACK')
 		CreateToolTip(load_button, 'Load a compatible file.')
@@ -34,30 +30,35 @@ class MainMenu(tk.Frame):
 		create_button.configure(foreground='BLACK', activeforeground='BLACK')
 		CreateToolTip(create_button, 'Create a new geometry from scratch.')
 		self.geom_data = None
+		self.msh_filename = ''
 
-	@staticmethod
-	def load_geometry_mesh(master):
+	def load_geometry_mesh(self, master):
 		ftypes = [('Dolfin Mesh File', '*.xml'), ('GMSH Geometry File', '*geo'), ('GMSH Mesh File', '*.msh'),
 		          ('All files', '*')]
 		filename = filedialog.askopenfilename(initialdir=os.getcwd(), filetypes=ftypes)
 		assert isinstance(filename, str), 'Select a proper file.'
 		if filename == '':
 			raise NameError('No file was selected. Stopping execution')
+		if filename.split('.')[-1] == 'geo':
+			self.msh_filename = write_mesh(filename)
+		elif filename.split('.')[-1] == 'msh' or filename.split('.')[-1] == 'xml':
+			self.msh_filename = filename
 		label = tk.Label(master, text='File was properly loaded. You can now close this window.', justify='center')
 		label.grid(row=2, column=1)
 
 	def create_geometry(self, master):
-		self.geom_data = GeometryGeneration(master)
+		self.geom_data = GeometryGeneration(master, self)
 
 
 class GeometryGeneration(tk.Frame):
 
-	def __init__(self, master1):
+	def __init__(self, master1, main):
 		master2 = tk.Tk()
 		master2.title('Create a new Geometry')
 		tk.Frame.__init__(self, master2)
 		self.master2 = master2
 		self.finish = False
+		self.msh_filename = ''
 
 		# Create the Labels of the inputs.
 		tk.Label(master2, text='Select an option for the interface expression').grid(row=0, column=0)
@@ -98,7 +99,7 @@ class GeometryGeneration(tk.Frame):
 		                                                                                      padx=10, pady=10)
 
 		# Create a button to close the create geometry menu.
-		close_but = tk.Button(self.master, text='Save and close.', command=lambda: self.close_fun(master1))
+		close_but = tk.Button(self.master, text='Save and close.', command=lambda: self.close_fun(master1, main))
 		close_but.grid(row=7, column=2, padx=10, pady=10)
 		close_but.configure(foreground='BLACK', activeforeground='BLACK')
 
@@ -157,7 +158,7 @@ class GeometryGeneration(tk.Frame):
 			self.degrees = False
 			self.angle_unit = 'radians'
 
-	def close_fun(self, master):
+	def close_fun(self, master, main):
 		# Check that inputs are correct.
 		if self.user_choice.get() == self.options_list[0] and self.z_of_r.get() == '':
 			messagebox.showwarning(title='Error', message='No function was introduced, and it cannot be left blank.\n'
@@ -178,17 +179,18 @@ class GeometryGeneration(tk.Frame):
 		master.destroy()
 
 		# Generate the .geo file from the given data.
-		geo_gen = GMSHInterface()
+		self.geo_gen = GMSHInterface()
 		num_points = int(self.number_points.get())
 		initial_ind_coord = str_2_num(self.initial_ind_coord.get())
 		final_ind_coord = str_2_num(self.final_ind_coord.get())
 		base_data = np.linspace(initial_ind_coord, final_ind_coord, num_points)
 		if self.z_of_r.get() != '':
-			geo_gen.geometry_generator(interface_fun=self.z_of_r.get(), r=base_data)
+			self.geo_gen.geometry_generator(interface_fun=self.z_of_r.get(), r=base_data)
 		elif self.z_fun.get() is not None and self.r_fun.get() is not None:
-			geo_gen.geometry_generator(interface_fun_r=self.r_fun.get(), interface_fun_z=self.z_fun.get(),
-			                           independent_param=base_data, angle_unit=self.angle_unit)
-		geo_gen.mesh_generation()
+			self.geo_gen.geometry_generator(interface_fun_r=self.r_fun.get(), interface_fun_z=self.z_fun.get(),
+			                                independent_param=base_data, angle_unit=self.angle_unit)
+		self.msh_filename = self.geo_gen.mesh_generation()
+		main.msh_filename = self.msh_filename
 
 
 class PredefinedFunctions(tk.Frame):
