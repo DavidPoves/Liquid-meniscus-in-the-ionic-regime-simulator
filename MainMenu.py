@@ -261,6 +261,17 @@ class PredefinedFunctions(tk.Frame):
 		self.toolbar.update()
 		self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
+	def update_degrees_units(self):
+		self.geo_input.check_angle_units()
+		degrees_check = tk.Checkbutton(master=self.geo_input.master2, variable=self.geo_input.degrees_var,
+		                               text='Degrees?', state=tk.DISABLED,
+		                               command=self.geo_input.check_angle_units)
+		degrees_check.grid(row=7, column=1, padx=10, pady=10)
+		CreateToolTip(degrees_check, 'If any angle is introduced, check this option to set\n'
+		                             'degrees as the unit to be used. Otherwise, radians\n'
+		                             'will be used.\n'
+		                             'Note: Ignore this option if no angles are introduced.')
+
 	def save(self):
 		# Load the chosen function into the Geometry menu.
 		if self.user_fun.get() == 'Half Taylor Cone':
@@ -274,6 +285,8 @@ class PredefinedFunctions(tk.Frame):
 				row=3, column=1, padx=10, pady=10)
 			tk.Entry(master=self.geo_input.master2, textvariable=self.geo_input.z_of_r, state=tk.DISABLED,
 			         justify='center').grid(row=1, column=1, padx=10, pady=10)
+			self.geo_input.degrees_var.set(True)
+			self.update_degrees_units()
 		elif self.user_fun.get() == 'Cosine Function':
 			self.geo_input.z_of_r.set('0.5*cos(PI/2 * r)')
 			tk.Entry(master=self.geo_input.master2, textvariable=self.geo_input.r_fun, state=tk.DISABLED,
@@ -282,14 +295,8 @@ class PredefinedFunctions(tk.Frame):
 			         justify='center').grid(row=3, column=1, padx=10, pady=10)
 			tk.Entry(master=self.geo_input.master2, textvariable=self.geo_input.z_of_r, state=tk.NORMAL,
 			         justify='center').grid(row=1, column=1, padx=10, pady=10)
-			degrees_check = tk.Checkbutton(master=self.geo_input.master2, variable=self.geo_input.degrees_var,
-			                               text='Degrees?', state=tk.DISABLED,
-			                               command=self.geo_input.check_angle_units)
-			degrees_check.grid(row=7, column=1, padx=10, pady=10)
-			CreateToolTip(degrees_check, 'If any angle is introduced, check this option to set\n'
-			                             'degrees as the unit to be used. Otherwise, radians\n'
-			                             'will be used.\n'
-			                             'Note: Ignore this option if no angles are introduced.')
+			self.geo_input.degrees_var.set(False)
+			self.update_degrees_units()
 		elif self.user_fun.get() == 'Parabolic Function' or self.user_fun.get() == 'Straight Line':
 			tk.Entry(master=self.geo_input.master2, textvariable=self.geo_input.r_fun, state=tk.DISABLED,
 			         justify='center').grid(row=2, column=1, padx=10, pady=10)

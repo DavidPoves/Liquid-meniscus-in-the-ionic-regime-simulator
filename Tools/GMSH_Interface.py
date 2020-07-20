@@ -176,20 +176,25 @@ class GMSHInterface(object):
                 self.key = 'p' + str(self.point_num)
 
     @staticmethod
+    def avoid_built_in_functions(string, replace_by=''):
+        string = string.replace('s i n', replace_by)
+        string = string.replace('t a n', replace_by)
+        string = string.replace('c o s', replace_by)
+        string = string.replace('e x p', replace_by)
+        string = string.replace('a b s', replace_by)
+        string = string.replace('t r u n c', replace_by)
+        string = string.replace('r o u n d', replace_by)
+        string = string.replace('s g n', replace_by)
+        string = string.replace('P I', replace_by)
+        string = string.replace('E', replace_by)
+        return string
+
+    @staticmethod
     def get_independent_var_from_equation(string):
         ind_var = ' '.join(re.split("[^a-zA-Z]*", string)).strip()
 
         # Avoid false positives of the accepted functions from the parser.
-        ind_var = ind_var.replace('s i n', '')
-        ind_var = ind_var.replace('t a n', '')
-        ind_var = ind_var.replace('c o s', '')
-        ind_var = ind_var.replace('e x p', '')
-        ind_var = ind_var.replace('a b s', '')
-        ind_var = ind_var.replace('t r u n c', '')
-        ind_var = ind_var.replace('r o u n d', '')
-        ind_var = ind_var.replace('s g n', '')
-        ind_var = ind_var.replace('P I', '')
-        ind_var = ind_var.replace('E', '')
+        ind_var = GMSHInterface.avoid_built_in_functions(ind_var)
 
         # Obtain the independent variable.
         aux = []
@@ -204,18 +209,55 @@ class GMSHInterface(object):
             return list(aux)[0]
 
     @staticmethod
+    def replace_ind_var(string, ind_var, value):
+        string_original = string
+        # Define a dictionary to replace give functions by an unique non-alphanumeric character.
+        avail_chars = ['!', '@', '#', '$', '%', '&', '?', '¿', '¡', 'ç']
+        replacements = {}
+        nsp_ = NumericStringParser()
+        functions = list(nsp_.fn.keys())
+        functions.append('PI')
+        functions.append('E')
+
+        for i in range(0, len(avail_chars)):
+            replacements[functions[i]] = avail_chars[i]
+
+        pattern = '|'.join([fun for fun in functions])
+        matches = list(set(re.findall(pattern, string)))
+
+        for match in matches:
+            string = string.replace(match, replacements[match])
+
+        # Now, we can safely replace the independent variable.
+        string = string.replace(ind_var, value)
+
+        # Again, replace the built in functions.
+        for match in matches:
+            string = string.replace(replacements[match], match)
+
+        return string
+
+    @staticmethod
     def angle_handler(string):
+        nsp_local = NumericStringParser()
         trig_functions = ['sin', 'cos', 'tan']
 
-        # Detect if any trigonometric function is present.
         for fun in trig_functions:
-            str_list = string.split(fun)
-            if len(str_list) == 1:  # No trigonometric function is present on the expression.
-                pass
-            else:
-                for i in str_list[1:]:
-                    aux = str_2_num(re.search(r'\((.*?)\)', i).group(1))  # This is the angle in degrees.
-                    string = string.replace(str(aux), str(np.radians(aux)))
+            pattern = fr'[^a-zA-Z]*{fun}\((.*?)\)'
+            matches = re.findall(pattern, string)
+            for match in matches:
+                if re.search('[a-zA-Z]', match) is None:
+                    """
+                    At this stage of the code, when calling this function in the geometry generator, all the
+                    independent variables have been replaced. Therefore, only numbers and built-in functions exist. The
+                    previous re pattern will match everything between parentheses, and this re.search method will
+                    check if there's any letter between the detected parenthesis. In that way, we are able to nest
+                    several trigonometric functions within a single one (for example, tan(2*cos(49.3))).
+                    
+                    Note: The variable pattern will detect anything between parentheses which are preceeded by one of
+                    the defined trigonometric functions. That is, it will detect cos(30), but not (2-1), for example.
+                    """
+                    string = string.replace(match, str(np.radians(nsp_local.eval(match))))
         return string
 
     def geometry_generator(self, interface_fun=None, interface_fun_r=None, interface_fun_z=None, factor=10, **kwargs):
@@ -264,7 +306,7 @@ class GMSHInterface(object):
             for r_val in r_arr:
                 interface_fun = self.interface_fun
                 self.key = 'p' + str(self.point_num)
-                interface_fun = interface_fun.replace(ind_var, str(r_val))  # Now, we can replace the the independent variable with the corresponding number.
+                interface_fun = GMSHInterface.replace_ind_var(interface_fun, ind_var, str(r_val))
                 z_val = nsp.eval(interface_fun)
                 if r_val != 1:
                     self.p_dict[self.key] = Entity.Point([r_val, z_val, 0], mesh=self.my_mesh)
@@ -279,8 +321,8 @@ class GMSHInterface(object):
                 interface_fun_z = self.interface_fun_z
                 self.key = 'p' + str(self.point_num)
                 # Replace the independent variables with the corresponding values.
-                interface_fun_r = interface_fun_r.replace(ind_var_r, str(s))
-                interface_fun_z = interface_fun_z.replace(ind_var_z, str(s))
+                interface_fun_r = GMSHInterface.replace_ind_var(interface_fun_r, ind_var_r, str(s))
+                interface_fun_z = GMSHInterface.replace_ind_var(interface_fun_z, ind_var_z, str(s))
                 r = nsp.eval(interface_fun_r)
                 z = nsp.eval(interface_fun_z)
                 if r != 1:
