@@ -714,9 +714,9 @@ class gmsh_handle(object):
         # Append the created files into the .geo file.
         with open('MESH_&_RESTRICTIONS/' + filename, 'a') as my_file:
             for code in TCL:
-                my_file.write(code+';\n')
+                my_file.write(code + ';\n')
             for code in TSL:
-                my_file.write(code+';\n')
+                my_file.write(code + ';\n')
             my_file.close()
 
         # Re-open the file.

@@ -16,8 +16,8 @@
 # Import the libraries.
 import os
 from Input_Parameters import Liquid_Properties
-from Solvers.Poisson_solver import Poisson
-from Solvers.NS_Solver import Navier_Stokes as NS
+# from Solvers.Poisson_solver import Poisson
+# from Solvers.NS_Solver import Navier_Stokes as NS
 import fenics as fn
 import numpy as np
 from Tools.PlotPy import PlotPy
@@ -37,25 +37,6 @@ This project is heavily based on the the thesis by Chase Coffman:
 Electrically-Assisted Evaporation of Charged Fluids: Fundamental Modeling and
 Studies on Ionic Liquids.
 """
-
-
-def Mesh_generator(mesh_folder_path, name):
-    # Initialize the gmsh api to get the elements.
-    gmsh.initialize()
-    # Save the mesh with v2 to use it with dolfin.
-    gmsh.option.setNumber("Mesh.MshFileVersion", 2.)
-    # Re-open the file.
-    gmsh.open(mesh_folder_path + '/' + name + '.geo')
-
-    # Generate the 2D mesh.
-    gmsh.model.mesh.generate(2)  # 2 indicating 2 dimensions.
-    filename = name + '.msh'
-    gmsh.write(mesh_folder_path + '/' + filename)
-
-    # Finalize the gmsh processes.
-    gmsh.finalize()
-
-
 # Prepare graphing tool.
 """
 All the available fonts for matplotlib:
@@ -112,6 +93,10 @@ dolfin-converter will be able to transform the .msh file into .xml, the
 extension that is compatible with FEniCS. This is automatically done in the
 code.
 """
+
+# Call the main menu (main GUI).
+
+
 # Introduce the number of meniscus points.
 N = 800
 
