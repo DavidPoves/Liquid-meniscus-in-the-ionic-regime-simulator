@@ -1,7 +1,20 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from mpldatacursor import datacursor
 
 from Tools.GMSH_Interface import GMSHInterface
+
+
+def on_pick(event):
+	artist = event.artist
+	xmouse, ymouse = event.mouseevent.xdata, event.mouseevent.ydata
+	x, y = artist.get_xdata(), artist.get_ydata()
+	ind = event.ind
+	print('Artist picked:', event.artist)
+	print('{} vertices picked'.format(len(ind)))
+	print('Pick between vertices {} and {}'.format(min(ind), max(ind) + 1))
+	print('x, y of mouse: {:.2f},{:.2f}'.format(xmouse, ymouse))
+	print('Data point:', x[ind[0]], y[ind[0]])
 
 
 def plot_geo(filepath):
@@ -23,17 +36,23 @@ def plot_geo(filepath):
 
 	plt.figure()
 	for tag, curve in plot_dict.items():
-		r = curve[::2].T
-		r = r.reshape(len(r), 1)
+		r = curve[::2].T  # Extract r coordinates
+		r = r.reshape(len(r), 1)  # Reshape for proper dimensions
 		z = curve[1::2].T
 		z = z.reshape(len(z), 1)
-		arr = np.concatenate((r, z), axis=1)
-		arr = arr[arr[:, 0].argsort()]
+
+		arr = np.concatenate((r, z), axis=1)  # Join the two previous arrays to create an unique array.
+		arr = arr[arr[:, 0].argsort()]  # Sort the values for proper plotting.
+
 		plt.plot(arr[:, 0], arr[:, 1], label=tag)
-	plt.show()
+	Cursor = datacursor(formatter='{label}'.format)
 	plt.legend()
+	plt.show(block=False)
+
+	return Cursor
 
 
 if __name__ == '__main__':
 	path = "/Users/davidpoves/TFG/CODE/TFG-V2/MESH OBJECTS/Prueba.geo"
-	plot_geo(path)
+	interactive_data = plot_geo(path)
+	# print(interactive_data._last_annotation.get_text())
