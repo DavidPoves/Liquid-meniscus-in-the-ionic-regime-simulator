@@ -7,6 +7,7 @@ import re
 from py2gmsh import Mesh, Entity
 
 from Tools.EvaluateString import NumericStringParser
+from Tools.CreateMesh import str_2_num
 
 
 class GMSHInterface(object):
@@ -254,11 +255,92 @@ class GMSHInterface(object):
                     check if there's any letter between the detected parenthesis. In that way, we are able to nest
                     several trigonometric functions within a single one (for example, tan(2*cos(49.3))).
                     
-                    Note: The variable pattern will detect anything between parentheses which are preceeded by one of
+                    Note: The variable 'pattern' will detect anything between parentheses which are preceded by one of
                     the defined trigonometric functions. That is, it will detect cos(30), but not (2-1), for example.
                     """
                     string = string.replace(match, str(np.radians(nsp_local.eval(match))))
         return string
+
+    @staticmethod
+    def extract_points_from_geo(filepath):
+        # Create a dictionary with the id of the point as the key and the coordinates as the value.
+        points_data = dict()
+        curves_data = dict()
+        pattern_br = r"\{(.*?)\}"  # Catch everything between curly braces.
+        pattern_pa = r"\(([^\)]+)\)"
+        with open(filepath, 'r') as f:  # Open the file with read permissions only.
+            for line in f:
+                if re.match('Point', line):  # Points have to be read
+                    point = []
+                    content_re_br = re.findall(pattern_br, line)  # Get content between curly braces of the line.
+                    content_re_pa = re.findall(pattern_pa, line)
+                    for str_point in content_re_br[0].strip().split(',')[:-1]:
+                        point.append(str_2_num(str_point))
+                    point = np.array(point)  # Transform Pyhton array to Numpy array.
+                    points_data[content_re_pa[0]] = point
+                elif re.match(r"Curve\(([^\)]+)\)", line):  # Curves have to be read.
+                    curve_id = re.findall(pattern_pa, line)[0]
+                    curves = re.findall(pattern_br, line)[0].strip()
+                    curves_data[curve_id] = curves
+        f.close()
+
+        return points_data, curves_data
+
+    @staticmethod
+    def get_boundaries_ids(filepath):
+        parentheses_pattern = r"\(([^\)]+)\)"  # Get everything between parentheses.
+        quotes_pattern = r'"([A-Za-z0-9_\./\\-]*)"'
+        pattern_br = r"\{(.*?)\}"  # Catch everything between curly braces.
+
+        # Preallocate the storage objects.
+        boundaries_ids = dict()
+        names = []
+        tags = []
+        physical_curves = dict()
+
+        # Open the file.
+        with open(filepath, 'r') as f:  # Open the file with reading permission ONLY ('r')
+            for line in f:
+                if re.search('Physical Curve', line):  # Search for the physical curves of the file.
+                    p = re.findall(parentheses_pattern, line)  # Get everything between the parentheses.
+                    b = re.findall(pattern_br, line)[0]
+                    p = p[0].split(',')  # Split the resulting string by the comma to separate name from tag.
+                    name = re.findall(quotes_pattern, p[0])  # To eliminate double quotes resulting from previous re.
+                    tag = p[1]
+                    names.append(name[0])
+                    physical_curves[name[0]] = b
+                    tags.append(tag.strip())
+        f.close()
+        for i in range(len(names)):
+            boundaries_ids[names[i]] = int(str_2_num(tags[i]))
+
+        return boundaries_ids, physical_curves
+
+    @staticmethod
+    def get_subdomains_ids(filepath):
+        parentheses_pattern = r"\(([^\)]+)\)"  # Get everything between parentheses.
+        quotes_pattern = r'"([A-Za-z0-9_\./\\-]*)"'
+
+        # Preallocate the storage objects.
+        subdomains_ids = dict()
+        names = []
+        tags = []
+
+        # Open the file.
+        with open(filepath, 'r') as f:  # Open the file with reading permission ONLY ('r')
+            for line in f:
+                if re.search('Physical Surface', line):  # Search for the physical curves of the file.
+                    p = re.findall(parentheses_pattern, line)  # Get everything between the parentheses.
+                    p = p[0].split(',')  # Split the resulting string by the comma to separate name from tag.
+                    name = re.findall(quotes_pattern, p[0])  # To eliminate double quotes resulting from previous re.
+                    tag = p[1]
+                    names.append(name[0])
+                    tags.append(tag.strip())
+        f.close()
+        for i in range(len(names)):
+            subdomains_ids[names[i]] = int(str_2_num(tags[i]))
+
+        return subdomains_ids
 
     def geometry_generator(self, interface_fun=None, interface_fun_r=None, interface_fun_z=None, factor=10, **kwargs):
 
@@ -447,7 +529,7 @@ if __name__ == '__main__':
 
 
     def z_fun(s):
-        return (2*(1-s)*s*20*(1/tan(49.3))*1)/(1-2*s*(1-s)*(1-20))
+        return (2*(1-s)*s*20*(1/np.tan(beta))*1)/(1-2*s*(1-s)*(1-20))
 
 
     def cos_fun(r):

@@ -121,7 +121,7 @@ checks_folder_path = root_folder + '/' + checks_folder_name
 
 # Call the dolfin-converter if necessary.
 if filename.split('.')[-1] != 'xml':
-    filename = msh2xml(filename, root_folder, mesh_folder_path)
+    meshname = msh2xml(filename, root_folder, mesh_folder_path)
 
 # %% ELECTROSTATICS.
 # Define the values to be used for the simulation.
