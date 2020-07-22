@@ -106,9 +106,6 @@ app = run_main_menu()
 filepath = app.msh_filename
 filename = filepath.split('/')[-1]
 
-# Introduce the number of meniscus points.
-N = 800
-
 # Create the folders in which the outputs will be stored.
 mesh_folder_path = '/'.join(filepath.split('/')[:-1])
 
@@ -128,7 +125,7 @@ if filename.split('.')[-1] != 'xml':
 # Define the values to be used for the simulation.
 r0 = r0_list[0]
 z0 = 10*r0
-T_h = 1.1
+T_h = 1.
 Lambda = Lambda_list[0]
 B = B_list[0]
 E0 = E0_list[0]

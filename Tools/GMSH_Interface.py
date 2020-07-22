@@ -35,6 +35,7 @@ class GMSHInterface(object):
         self.interface_points = dict()  # Dictionary that will isolate the points conforming the interface.
         self.list_points_interface = list()
         self.refinement_points_tip = None  # List containing the refinement points of the tip.
+        self.refinement_points_knee = None  # List containing the refinement points of the knee.
         self.point_num = 1  # Number of points counter.
         self.key = ''  # Variable creating the dicts of the self.p_dict variable.
         self.interface_end_point = None  # Locator of the last point defining the interface
@@ -438,12 +439,30 @@ class GMSHInterface(object):
         self.key = 'p' + str(self.point_num)
 
         # BOTTOM WALL POINTS DEFINITION.
+        # Get the number of points of the interface and divide the radius of the tube by this number.
+        dist = 1/len(r_arr)
+        tot_dist = 2*dist
+
+        self.p_dict[self.key] = Entity.Point([1 + tot_dist, 0, 0], mesh=self.my_mesh)
+        self.point_num += 1
+        self.key = 'p' + str(self.point_num)
+        self.p_dict[self.key] = Entity.Point([1 + tot_dist - dist, 0, 0], mesh=self.my_mesh)
+        self.point_num += 1
+        self.key = 'p' + str(self.point_num)
+
+        # Create the knee point.
         self.p_dict[self.key] = Entity.Point([1, 0, 0], mesh=self.my_mesh)
         knee_point = self.p_dict[self.key]
         self.point_num += 1
         self.key = 'p' + str(self.point_num)
 
         # TUBE WALL RIGHT POINTS DEFINITION.
+        self.p_dict[self.key] = Entity.Point([1, -dist,  0], mesh=self.my_mesh)
+        self.point_num += 1
+        self.key = 'p' + str(self.point_num)
+        self.p_dict[self.key] = Entity.Point([1, -tot_dist, 0], mesh=self.my_mesh)
+        self.point_num += 1
+        self.key = 'p' + str(self.point_num)
         self.p_dict[self.key] = Entity.Point([1, -factor, 0], mesh=self.my_mesh)
         self.point_num += 1
         self.key = 'p' + str(self.point_num)

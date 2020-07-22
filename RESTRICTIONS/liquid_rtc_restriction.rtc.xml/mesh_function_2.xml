@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <dolfin xmlns:dolfin="http://fenicsproject.org">
   <mesh_function>
-    <mesh_value_collection name="f" type="bool" dim="2" size="48267">
+    <mesh_value_collection name="f" type="bool" dim="2" size="48255">
       <value cell_index="0" local_entity="0" value="0" />
       <value cell_index="1" local_entity="0" value="0" />
       <value cell_index="2" local_entity="0" value="0" />
@@ -27493,16 +27493,16 @@
       <value cell_index="27488" local_entity="0" value="0" />
       <value cell_index="27489" local_entity="0" value="0" />
       <value cell_index="27490" local_entity="0" value="0" />
-      <value cell_index="27491" local_entity="0" value="1" />
-      <value cell_index="27492" local_entity="0" value="1" />
-      <value cell_index="27493" local_entity="0" value="1" />
-      <value cell_index="27494" local_entity="0" value="1" />
-      <value cell_index="27495" local_entity="0" value="1" />
-      <value cell_index="27496" local_entity="0" value="1" />
-      <value cell_index="27497" local_entity="0" value="1" />
-      <value cell_index="27498" local_entity="0" value="1" />
-      <value cell_index="27499" local_entity="0" value="1" />
-      <value cell_index="27500" local_entity="0" value="1" />
+      <value cell_index="27491" local_entity="0" value="0" />
+      <value cell_index="27492" local_entity="0" value="0" />
+      <value cell_index="27493" local_entity="0" value="0" />
+      <value cell_index="27494" local_entity="0" value="0" />
+      <value cell_index="27495" local_entity="0" value="0" />
+      <value cell_index="27496" local_entity="0" value="0" />
+      <value cell_index="27497" local_entity="0" value="0" />
+      <value cell_index="27498" local_entity="0" value="0" />
+      <value cell_index="27499" local_entity="0" value="0" />
+      <value cell_index="27500" local_entity="0" value="0" />
       <value cell_index="27501" local_entity="0" value="1" />
       <value cell_index="27502" local_entity="0" value="1" />
       <value cell_index="27503" local_entity="0" value="1" />
@@ -48257,18 +48257,6 @@
       <value cell_index="48252" local_entity="0" value="1" />
       <value cell_index="48253" local_entity="0" value="1" />
       <value cell_index="48254" local_entity="0" value="1" />
-      <value cell_index="48255" local_entity="0" value="1" />
-      <value cell_index="48256" local_entity="0" value="1" />
-      <value cell_index="48257" local_entity="0" value="1" />
-      <value cell_index="48258" local_entity="0" value="1" />
-      <value cell_index="48259" local_entity="0" value="1" />
-      <value cell_index="48260" local_entity="0" value="1" />
-      <value cell_index="48261" local_entity="0" value="1" />
-      <value cell_index="48262" local_entity="0" value="1" />
-      <value cell_index="48263" local_entity="0" value="1" />
-      <value cell_index="48264" local_entity="0" value="1" />
-      <value cell_index="48265" local_entity="0" value="1" />
-      <value cell_index="48266" local_entity="0" value="1" />
     </mesh_value_collection>
   </mesh_function>
 </dolfin>
