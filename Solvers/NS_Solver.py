@@ -8,7 +8,6 @@ import dolfin as df
 import multiphenics as mp
 import numpy as np
 import re
-from Tools.gmsh_handle import gmsh_handle
 from Tools.PostProcessing import PostProcessing
 
 

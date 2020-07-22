@@ -55,7 +55,7 @@ aa = [[fn.inner(u1, v1)*dx(subdomains_ids['Vacuum']), 0],
       [0, fn.inner(u2, v2)*dx(subdomains_ids['Liquid'])]]
 
 # Impose a known function on one subdomain and a constant on the other.
-bb = [2*r*v1*dx(subdomains_ids['Vacuum']), fn.Constant(0.)*v2*dx(subdomains_ids['Liquid'])]
+bb = [r*z*v1*dx(subdomains_ids['Vacuum']), fn.Constant(0.)*v2*dx(subdomains_ids['Liquid'])]
 
 AA = mp.block_assemble(aa)
 BB = mp.block_assemble(bb)
@@ -68,8 +68,8 @@ check_full = fn.project(check[0]+check[1], V)
 V_vec = fn.VectorFunctionSpace(mesh, 'Lagrange', 1)
 v = fn.TestFunction(V_vec)
 u = fn.TrialFunction(V_vec)
-a = fn.inner(u, v)*dx(subdomains_ids['Vacuum']) + fn.inner(u, v)*dx(subdomains_ids['Liquid'])
-L = fn.inner(fn.grad(check_full), v)*dx(subdomains_ids['Vacuum']) + fn.inner(fn.grad(check_full), v)*dx(subdomains_ids['Liquid'])
+a = fn.inner(u, v)*dx(subdomains_ids['Vacuum'])
+L = fn.inner(fn.grad(check_full), v)*dx(subdomains_ids['Vacuum'])
 check_grad = fn.Function(V_vec)
 fn.solve(a == L, check_grad)
 

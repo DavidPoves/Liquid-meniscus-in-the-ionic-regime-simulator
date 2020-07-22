@@ -16,8 +16,8 @@
 # Import the libraries.
 import os
 
-# from Solvers.Poisson_solver import Poisson
-# from Solvers.NS_Solver import Navier_Stokes as NS
+from Solvers.Poisson_solver import Poisson
+from Solvers.NS_Solver import Navier_Stokes as NS
 import fenics as fn
 import numpy as np
 
@@ -122,12 +122,13 @@ checks_folder_path = root_folder + '/' + checks_folder_name
 # Call the dolfin-converter if necessary.
 if filename.split('.')[-1] != 'xml':
     meshname = msh2xml(filename, root_folder, mesh_folder_path)
+    filepath = mesh_folder_path + '/' + meshname
 
 # %% ELECTROSTATICS.
 # Define the values to be used for the simulation.
 r0 = r0_list[0]
 z0 = 10*r0
-T_h = 1
+T_h = 1.1
 Lambda = Lambda_list[0]
 B = B_list[0]
 E0 = E0_list[0]
@@ -171,9 +172,7 @@ bcs_elec_init = {'Top_Wall': {'Dirichlet': [top_potential, 'vacuum']},
 
 
 # Initialize the Electrostatics class, loading constant parameters.
-Electrostatics = Poisson(inputs, boundary_conditions_elec, filename,
-                         mesh_folder_path, restrictions_folder_path,
-                         checks_folder_path,
+Electrostatics = Poisson(inputs, boundary_conditions_elec, filepath, restrictions_folder_path, checks_folder_path,
                          boundary_conditions_init=bcs_elec_init)
 
 # Get the mesh object.
@@ -181,7 +180,7 @@ mesh = Electrostatics.get_mesh()
 
 # Generate a Mesh Function containing all subdomains and boundaries.
 interface_name = '"Meniscus"'
-boundaries, boundaries_ids = Electrostatics.get_boundaries(interface_name)
+boundaries, boundaries_ids = Electrostatics.get_boundaries()
 subdomains = Electrostatics.get_subdomains()
 
 # Write out visualization files.
@@ -198,8 +197,7 @@ Electrostatics.write_check_files()
 
 # CREATE THE RESTRICTIONS.
 # Generate the restrictions.
-vacuum_rtc, liquid_rtc, domain_rtc, meniscus_rtc = \
-    Electrostatics.generate_restrictions()
+restrictions_dict = Electrostatics.generate_restrictions()
 
 # Write out for simulation (.xml) and for visualization (.xdmf).
 """
@@ -212,9 +210,7 @@ Electrostatics.write_restrictions()
 # DEFINE THE MIDPOINTS OF THE FACETS ON THE INTERFACE.
 r_mids, z_mids = PostProcessing.get_midpoints_from_boundary(boundaries, boundaries_ids['Interface'])
 coords_mids = [r_mids, z_mids]
-r_nodes, z_nodes = PostProcessing.get_nodepoints_from_boundary(mesh,
-                                                               boundaries,
-                                                               boundaries_ids['Interface'])
+r_nodes, z_nodes = PostProcessing.get_nodepoints_from_boundary(mesh, boundaries, boundaries_ids['Interface'])
 coords_nodes = [r_nodes, z_nodes]
 
 # SOLVE THE ELECTROSTATICS.
@@ -241,7 +237,7 @@ snes_solver_parameters = {"snes_solver": {"linear_solver": "mumps",
                                           "report": True,
                                           "error_on_nonconvergence": True,
                                           'line_search': 'bt',
-                                          'relative_tolerance': 1e-4}}
+                                          'relative_tolerance': 1e-2}}
 phi, sigma = Electrostatics.solve(solver_parameters=snes_solver_parameters)
 
 # %% RETRIVE ALL THE IMPORTANT INFORMATION.
@@ -250,23 +246,21 @@ At this step, from the potential obtained in previous steps we derive the
 electric fields at each of the subdomains. Moreover, we will obtain their
 normal components at the interface.
 """
-E_v = Electrostatics.get_electric_field('vacuum')
-E_l = Electrostatics.get_electric_field('liquid')
+E_v = Electrostatics.get_electric_field('Vacuum')
+E_l = Electrostatics.get_electric_field('Liquid')
 
 # Split the electric field into radial and axial components.
 E_v_r, E_v_z = Poisson.split_field_components(E_v, coords_nodes)
 E_l_r, E_l_z = Poisson.split_field_components(E_l, coords_nodes)
 
-n_v = fn.FacetNormal(mesh)
-n = n_v
-n_l = fn.as_vector((-n_v[0], -n_v[1]))
+n = fn.FacetNormal(mesh)
+n_v = n("-")
+# n_l = -n("+")
 
-E_v_n = Poisson.get_normal_field(n_v, E_v, mesh, boundaries, meniscus_rtc,
-                                 boundaries_ids['Interface'], sign="-")
+E_v_n = Electrostatics.get_normal_field(n_v, E_v)
 E_v_n_array = PostProcessing.extract_from_function(E_v_n, coords_mids)
 
-E_l_n = Poisson.get_normal_field(n_l, E_l, mesh, boundaries, meniscus_rtc,
-                                 boundaries_ids['Interface'], sign="+")
+E_l_n = Electrostatics.get_normal_field(n_v, E_l)
 E_l_n_array = PostProcessing.extract_from_function(E_l_n, coords_mids)
 
 # Compute the non dimensional evaporated charge and current.
