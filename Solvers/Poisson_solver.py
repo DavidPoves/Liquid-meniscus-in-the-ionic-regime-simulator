@@ -462,15 +462,15 @@ class Poisson(object):
         r = fn.SpatialCoordinate(self.mesh)[0]
         K = 1+self.Lambda*(self.T_h - 1)
 
-        E_v_n = fn.dot(-fn.grad(phi("-")), n("-"))
+        E_v_n_aux = fn.dot(-fn.grad(phi("-")), n("-"))
 
         def expFun():
-            sqrterm = E_v_n
+            sqrterm = E_v_n_aux
             expterm = (self.Phi/self.T_h)*(1-pow(self.B, 0.25)*fn.sqrt(sqrterm))
             return fn.exp(expterm)
 
         def sigma_fun():
-            num = K*E_v_n + self.eps_r*self.j_conv
+            num = K*E_v_n_aux + self.eps_r*self.j_conv
             den = K + (self.T_h/self.Chi)*expFun()
             return num/den
 
@@ -525,14 +525,15 @@ class Poisson(object):
         solver.solve()
 
         # Extract the solutions.
-        (phi, sigma) = phisigma.block_split()
+        (phi, _) = phisigma.block_split()
+        self.phi = phi
         # --------------------------------------------------------------------
 
-        # Store the solution in the class object.
-        self.phi = phi
-        self.sigma = sigma
-
-        return phi, sigma
+        # Compute the electric field at vacuum and correct the surface charge density.
+        self.E_v = self.get_electric_field('Vacuum')
+        self.E_v_n = self.get_normal_field(n("-"), self.E_v)
+        C = self.Phi / self.T_h * (1 - self.B ** 0.25 * fn.sqrt(self.E_v_n))
+        self.sigma = (K * self.E_v_n) / (K + self.T_h / self.Chi * fn.exp(-C))
 
     def solve_initial_problem(self):
         """
@@ -868,7 +869,7 @@ class Poisson(object):
         return E_n
 
     @staticmethod
-    def split_field_components(E, coords):
+    def split_field_components(E, coords, up=0):
         """
         Split the components of the given electric field at a given coordinates
 
@@ -902,7 +903,7 @@ class Poisson(object):
         zip_coords = zip(r_coords, z_coords)
 
         for r, z in zip_coords:
-            E_eval = E([r, z])
+            E_eval = E([r, z+up])
             E_r = np.append(E_r, E_eval[0])
             E_z = np.append(E_z, E_eval[1])
         return E_r, E_z

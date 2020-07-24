@@ -235,38 +235,29 @@ snes_solver_parameters = {"snes_solver": {"linear_solver": "mumps",
                                           "error_on_nonconvergence": True,
                                           'line_search': 'bt',
                                           'relative_tolerance': 1e-2}}
-phi, sigma = Electrostatics.solve(solver_parameters=snes_solver_parameters)
+Electrostatics.solve(solver_parameters=snes_solver_parameters)
 
-# %% RETRIVE ALL THE IMPORTANT INFORMATION.
+# %% RETRIEVE ALL THE IMPORTANT INFORMATION.
 """
 At this step, from the potential obtained in previous steps we derive the
 electric fields at each of the subdomains. Moreover, we will obtain their
 normal components at the interface.
 """
-E_v = Electrostatics.get_electric_field('Vacuum')
-E_l = Electrostatics.get_electric_field('Liquid')
 
 # Split the electric field into radial and axial components.
-E_v_r, E_v_z = Poisson.split_field_components(E_v, coords_nodes)
-E_l_r, E_l_z = Poisson.split_field_components(E_l, coords_nodes)
+E_v_r, E_v_z = Poisson.split_field_components(Electrostatics.E_v, coords_nodes)
 
-n = fn.FacetNormal(mesh)
-n_v = n("-")
-# n_l = -n("+")
-
-E_v_n = Electrostatics.get_normal_field(n_v, E_v)
-E_v_n_array = PostProcessing.extract_from_function(E_v_n, coords_mids)
-
-E_l_n = Electrostatics.get_normal_field(n_v, E_l)
-E_l_n_array = PostProcessing.extract_from_function(E_l_n, coords_mids)
+E_v_n_array = PostProcessing.extract_from_function(Electrostatics.E_v_n, coords_mids)
 
 # Compute the non dimensional evaporated charge and current.
 K = 1+Lambda*(T_h - 1)
 
-sigma_arr = PostProcessing.extract_from_function(sigma, coords_mids)
+E_l_n = (Electrostatics.E_v_n-Electrostatics.sigma)/LiquidInps.eps_r
+E_l_n_array = PostProcessing.extract_from_function(E_l_n, coords_mids)
+sigma_arr = PostProcessing.extract_from_function(Electrostatics.sigma, coords_mids)
 
-j_ev = (sigma*T_h)/(LiquidInps.eps_r*Chi) * fn.exp(-Phi/T_h * (
-        1-pow(B, 1/4)*fn.sqrt(E_v_n)))
+j_ev = (Electrostatics.sigma*T_h)/(LiquidInps.eps_r*Chi) * fn.exp(-Phi * (
+        1-pow(B, 1/4)*fn.sqrt(Electrostatics.E_v_n)))
 j_cond = K*E_l_n
 I_h = Poisson.get_nd_current(boundaries, boundaries_ids, j_ev, r0)
 
@@ -275,18 +266,14 @@ j_cond_arr = PostProcessing.extract_from_function(j_cond, coords_mids)
 
 # %% DATA POSTPROCESSING.
 # Check charge conservation.
+charge_check = abs(j_ev_arr-j_cond_arr)/j_ev_arr
+print(f'Maximum relative difference between evaporated and conducted charge is {max(charge_check)}')
 
 # Plot.
 plotpy.lineplot([(r_nodes, E_v_r, r'Radial ($\hat{r}$)'),
                  (r_nodes, E_v_z, r'Axial ($\hat{z}$)')],
                 xlabel=x_label, ylabel=y_label,
                 fig_title='Components of the electric field at vacuum',
-                legend_title='Field Components')
-
-plotpy.lineplot([(r_nodes, E_l_r, r'Radial ($\hat{r}$)'),
-                 (r_nodes, E_l_z, r'Axial ($\hat{z}$)')],
-                xlabel=x_label, ylabel=y_label,
-                fig_title='Components of the electric field at liquid',
                 legend_title='Field Components')
 
 plotpy.lineplot([(r_mids, E_v_n_array, 'Vacuum'),
@@ -301,14 +288,14 @@ plotpy.lineplot([(r_mids, sigma_arr)],
 
 # %% SOLVE STOKES EQUATION.
 # Define the required non dimensional parameters.
-k = k_0
-E_c = np.sqrt((4*gamma)/(r0*vacuum_perm))
-E_star = (4*np.pi*vacuum_perm*delta_G**2)/(1.60218e-19)**3
-j_star = k*E_star/eps_r
-u_star = j_star/(rho_0*q_m)
+k = LiquidInps.k_0
+E_c = np.sqrt((4*LiquidInps.gamma)/(r0*LiquidInps.vacuum_perm))
+E_star = (4*np.pi*LiquidInps.vacuum_perm*LiquidInps.Solvation_energy**2)/(1.60218e-19)**3
+j_star = k*E_star/LiquidInps.eps_r
+u_star = j_star/(LiquidInps.rho_0*LiquidInps.q_m)
 r_star = B*r0
-We = (rho_0*u_star**2*r_star)/(2*gamma)
-Ca = mu_0*u_star/(2*gamma)
+We = (LiquidInps.rho_0*u_star**2*r_star)/(2*LiquidInps.gamma)
+Ca = LiquidInps.mu_0*u_star/(2*LiquidInps.gamma)
 
 # Define the boundary conditions.
 boundary_conditions_fluids = {'Tube_Wall_R': {'Dirichlet':
@@ -316,14 +303,14 @@ boundary_conditions_fluids = {'Tube_Wall_R': {'Dirichlet':
                               }
 inputs_fluids = {'Weber number': We,
                  'Capillary number': Ca,
-                 'Relative perm': eps_r,
+                 'Relative perm': LiquidInps.eps_r,
                  'B': B,
                  'Lambda': Lambda,
                  'Non dimensional temperature': T_h,
-                 'Sigma': sigma,
+                 'Sigma': Electrostatics.sigma,
                  'Phi': Phi,
                  'Chi': Chi,
-                 'Potential': phi,
+                 'Potential': Electrostatics.phi,
                  'Contact line radius': r0}
 Stokes = NS(inputs_fluids, boundary_conditions_fluids, subdomains=subdomains,
             boundaries=boundaries, mesh=mesh, boundaries_ids=boundaries_ids,

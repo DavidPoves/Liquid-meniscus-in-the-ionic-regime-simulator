@@ -19,8 +19,8 @@ import fenics as fn
 import multiphenics as mp
 import matplotlib.pyplot as plt
 import numpy as np
-import re
-from Tools.gmsh_handle import gmsh_handle
+
+from Tools.GMSH_Interface import GMSHInterface
 from Tools.generate_restrictions import Restrictions
 from Tools.PostProcessing import PostProcessing
 
@@ -34,15 +34,16 @@ used in this part.
 
 
 class Poisson(object):
-    def __init__(self, inputs, boundary_conditions, filename, meshpath,
-                 restrictionspath, checkspath, boundary_conditions_init=None):
+    def __init__(self, inputs, boundary_conditions, msh_filepath, restrictionspath, checkspath,
+                 boundary_conditions_init=None):
 
-        self.filename = filename
-        self.meshpath = meshpath
+        self.filename = msh_filepath.split('/')[-1]
+        self.meshpath = msh_filepath
+        self.msh_folder = '/'.join(msh_filepath.split('/')[:-1])
         self.restrictionspath = restrictionspath
         self.checkspath = checkspath
         self.boundary_conditions = boundary_conditions
-        self.geo_file = self.filename.split('.')[0] + '.geo'
+        self.geo_filepath = self.msh_folder + '/' + self.filename.split('.')[0] + '.geo'
         self.boundary_conditions_init = boundary_conditions_init
 
         # Unpack iterable objects.
@@ -148,7 +149,7 @@ class Poisson(object):
 
         """
 
-        self.mesh = df.Mesh(self.meshpath + '/' + self.filename)
+        self.mesh = df.Mesh(self.meshpath)
 
         # Check the mesh type.
         self.check_mesh()
@@ -161,7 +162,6 @@ class Poisson(object):
         noise).
         """
         # self.mesh.smooth(50)  # 50 are the iterations to smooth the mesh.
-        # self.mesh.smooth_boundary(50, True)
 
         # Obtain the dimension of the created mesh.
         D = self.mesh.topology().dim()
@@ -175,7 +175,7 @@ class Poisson(object):
 
         return self.mesh
 
-    def get_boundaries(self, interface_name):
+    def get_boundaries(self):
         """
         Define the boundaries of the problem from the facet_region generated
         by dolfin.
@@ -197,7 +197,7 @@ class Poisson(object):
         """
 
         bound_name = self.filename.split('.')[0] + '_facet_region.xml'
-        file = self.meshpath + '/' + bound_name
+        file = self.msh_folder + '/' + bound_name
         self.boundaries = df.MeshFunction('size_t', self.mesh, file)
 
         # Obtain the boundaries ids from the .geo file.
@@ -208,24 +208,7 @@ class Poisson(object):
         only accept two subdomains, if these are defined first, we know that
         the first curve id will be 3, the next one 4 and so on.
         """
-        self.boundaries_ids = gmsh_handle.get_physical_curves_and_tags(self.geo_file, self.meshpath)
-        self.boundaries_ids['Interface'] = self.boundaries_ids.pop(interface_name)
-
-        # Now, we should clean the keys of the dictionary.
-        re_pattern = re.compile(r"(.*?)")  # Check for quoted words.
-        old_keys = [key for key in self.boundaries_ids.keys()]
-        new_keys = []
-        for key in self.boundaries_ids:
-            string = re_pattern.findall(key)
-            final_str = ''
-            for count in string:
-                if count.isalpha() or '_' in count:
-                    final_str += count
-            new_keys.append(final_str)
-        counter = 0
-        for key in old_keys:
-            self.boundaries_ids[new_keys[counter]] = self.boundaries_ids.pop(key)
-            counter += 1
+        self.boundaries_ids, _ = GMSHInterface.get_boundaries_ids(self.geo_filepath)
         return self.boundaries, self.boundaries_ids
 
     def get_subdomains(self):
@@ -248,27 +231,10 @@ class Poisson(object):
         """
 
         sub_name = self.filename.split('.')[0] + '_physical_region.xml'
-        file = self.meshpath + '/' + sub_name
-        self.subdomains = df.MeshFunction('size_t', self.mesh, file)
+        filepath = self.msh_folder + '/' + sub_name
+        self.subdomains = df.MeshFunction('size_t', self.mesh, filepath)
+        self.subdomains_ids = GMSHInterface.get_subdomains_ids(self.geo_filepath)
 
-        # Obtain the ids of the subdomains.
-        check_first = gmsh_handle.check_which_physical_first(self.filename,
-                                                             self.meshpath)
-
-        # Get the names of the subdomain and perform some checks.
-        self.surfaces_names = gmsh_handle.get_physical_surfaces(self.geo_file,
-                                                                self.meshpath)
-
-
-        if check_first[1]:  # This means that physical surfaces were defined before physical curves.
-            self.lower_subdomain_id = 1
-            self.upper_subdomain_id = 2
-        else:
-            try:
-                self.lower_subdomain_id = max([val for val in self.boundaries_ids.values()]) + 1
-                self.upper_subdomain_id = self.lower_subdomain_id + 1
-            except AttributeError:
-                raise AttributeError('The boundaries ids have not been generated. Generate them first and re-run this method.')
         return self.subdomains
 
     def get_measures(self):
@@ -310,25 +276,30 @@ class Poisson(object):
             Interface restriction.
 
         """
-        subdomains_ids_list = [self.lower_subdomain_id,
-                               self.upper_subdomain_id]
+        self.restrictions_dict = dict()
+        subdomains_ids_list = []
 
-        self.lower_rtc = Restrictions.generate_subdomain_restriction(self.mesh, self.subdomains, [self.lower_subdomain_id])
-        self.upper_rtc = Restrictions.generate_subdomain_restriction(self.mesh, self.subdomains, [self.upper_subdomain_id])
-        self.domain_rtc = Restrictions.generate_subdomain_restriction(self.mesh, self.subdomains, subdomains_ids_list)
-        self.interface_rtc = Restrictions.generate_interface_restriction(self.mesh, self.subdomains, set(subdomains_ids_list))
+        for key, value in self.subdomains_ids.items():
+            rtc = Restrictions.generate_subdomain_restriction(self.mesh, self.subdomains, [value])
+            self.restrictions_dict[key.lower()+'_rtc'] = rtc
+            subdomains_ids_list.append(value)
 
-        self.restrictions_tuple = (self.lower_rtc, self.upper_rtc,
-                                   self.domain_rtc, self.interface_rtc)
+        # Create a whole domain restriction.
+        self.restrictions_dict['domain_rtc'] = Restrictions.generate_subdomain_restriction(self.mesh, self.subdomains,
+                                                                                           subdomains_ids_list)
+
+        # Create the interface restriction.
+        rtc_int = Restrictions.generate_interface_restriction(self.mesh, self.subdomains, set(subdomains_ids_list))
+        self.restrictions_dict['interface_rtc'] = rtc_int
+
+        self.restrictions_tuple = tuple(list(self.restrictions_dict.values()))
 
         aux_str = '_restriction'
-        self.restrictions_names = (self.surfaces_names[0].lower() + aux_str,
-                                   self.surfaces_names[1].lower() + aux_str,
-                                   'domain_restriction',
-                                   'interface_restriction')
+        restrictions_keys = list(self.restrictions_dict.keys())
+        self.restrictions_names = (restrictions_keys[0].lower() + aux_str, restrictions_keys[1].lower() + aux_str,
+                                   'domain_restriction', 'interface_restriction')
 
-        return self.lower_rtc, self.upper_rtc, self.domain_rtc, \
-            self.interface_rtc
+        return self.restrictions_dict
 
     @staticmethod
     def plot(object, **kwargs):
@@ -448,14 +419,13 @@ class Poisson(object):
         # FUNCTION SPACES #
         # --------------------------------------------------------------------
         # Extract the restrictions to create the function spaces.
-        restrictions_block = [self.lower_rtc, self.upper_rtc,
-                              self.interface_rtc]
+        restrictions_block = [self.restrictions_dict['domain_rtc'], self.restrictions_dict['interface_rtc']]
 
         # Base Function Space.
         V = fn.FunctionSpace(self.mesh, 'Lagrange', 2)
 
         # Block Function Space.
-        W = mp.BlockFunctionSpace([V, V, V], restrict=restrictions_block)
+        W = mp.BlockFunctionSpace([V, V], restrict=restrictions_block)
 
         # Check the dimensions of the created block function spaces.
         for ix, _ in enumerate(restrictions_block):
@@ -469,10 +439,10 @@ class Poisson(object):
 
         # Test functions.
         vl = mp.BlockTestFunction(W)
-        (v1, v2, l) = mp.block_split(vl)
+        (v, l) = mp.block_split(vl)
 
         phisigma = mp.BlockFunction(W)
-        (phiv, phil, sigma) = mp.block_split(phisigma)
+        (phi, sigma) = mp.block_split(phisigma)
 
         # --------------------------------------------------------------------
         # MEASURES #
@@ -492,53 +462,41 @@ class Poisson(object):
         r = fn.SpatialCoordinate(self.mesh)[0]
         K = 1+self.Lambda*(self.T_h - 1)
 
-        def expFun(phiv):
-            sqrterm = fn.dot(-fn.grad(phiv("-")), n("-"))
-            expterm = self.Phi/self.T_h*(1-pow(self.B, 0.25)*fn.sqrt(sqrterm))
+        E_v_n = fn.dot(-fn.grad(phi("-")), n("-"))
+
+        def expFun():
+            sqrterm = E_v_n
+            expterm = (self.Phi/self.T_h)*(1-pow(self.B, 0.25)*fn.sqrt(sqrterm))
             return fn.exp(expterm)
 
-        def sigma_fun(phiv):
-            num = K*fn.dot(-fn.grad(phiv("-")), n("-")) + self.eps_r*self.j_conv
-            den = K + self.T_h/self.Chi*expFun(phi)
+        def sigma_fun():
+            num = K*E_v_n + self.eps_r*self.j_conv
+            den = K + (self.T_h/self.Chi)*expFun()
             return num/den
 
         # Define the variational form.
-        vacuum_int = r*fn.inner(fn.grad(phiv), fn.grad(v1))*self.dx(self.lower_subdomain_id)
-        liquid_int = self.eps_r*r*fn.inner(fn.grad(phil), fn.grad(v2))*self.dx(self.upper_subdomain_id)
+        vacuum_int = r*fn.inner(fn.grad(phi), fn.grad(v))*self.dx(self.subdomains_ids['Vacuum'])
+        liquid_int = self.eps_r*r*fn.inner(fn.grad(phi), fn.grad(v))*self.dx(self.subdomains_ids['Liquid'])
 
-        F = [vacuum_int - r*fn.dot(fn.grad(phiv)("-"), n("-"))*v1("-")*self.dS,
-             liquid_int - self.eps_r*r*fn.dot(fn.grad(phil)("+"), n("+"))*v2("+")*self.dS,
-             -r*sigma_fun(phiv)*l("-")*self.dS + sigma("-")*l("-")*self.dS]
+        F = [vacuum_int + liquid_int - r*sigma("-")*v("-")*self.dS,
+             r*sigma_fun()*l("-")*self.dS - r*sigma("-")*l("-")*self.dS]
 
         J = mp.block_derivative(F, phisigma, dphisigma)
 
         # --------------------------------------------------------------------
         # BOUNDARY CONDITIONS #
         # --------------------------------------------------------------------
-        bcs_v = []
-        bcs_l = []
-        bcs_i = []
+        bcs_block = []
         for i in self.boundary_conditions:
             if 'Dirichlet' in self.boundary_conditions[i]:
-                sub_id = self.boundary_conditions[i]['Dirichlet'][1]
-                if sub_id.lower() == self.surfaces_names[0].lower():
-                    sub_id = 0
-                elif sub_id.lower() == self.surfaces_names[1].lower():
-                    sub_id = 1
-                else:
-                    raise ValueError(f'Subdomain {sub_id} is not defined on the .geo file.')
                 bc_val = self.boundary_conditions[i]['Dirichlet'][0]
-                bc = mp.DirichletBC(W.sub(sub_id), bc_val, self.boundaries,
+                bc = mp.DirichletBC(W.sub(0), bc_val, self.boundaries,
                                     self.boundaries_ids[i])
                 # Check the created boundary condition.
                 assert len(bc.get_boundary_values()) > 0., f'Wrongly defined boundary {i}'
-                if sub_id == 0:
-                    bcs_v.append(bc)
-                elif sub_id == 1:
-                    bcs_l.append(bc)
-                else:
-                    bcs_i.append(bc)
-        bcs = mp.BlockDirichletBC([bcs_v, bcs_l, bcs_i])
+                bcs_block.append(bc)
+
+        bcs_block = mp.BlockDirichletBC([bcs_block])
 
         # --------------------------------------------------------------------
         # SOLVE #
@@ -549,34 +507,32 @@ class Poisson(object):
             Check if the user is introducing a potential from a previous
             iteration.
             """
-            phiv_init, phil_init, sigma_init = self.solve_initial_problem()
-            phiv.assign(phiv_init)
-            phil.assign(phil_init)
+            phiv, phil, sigma_init = self.solve_initial_problem()
+            phi.assign(phiv)
             sigma.assign(sigma_init)
-        # else:
-        #     phi.assign(kwargs.get('Initial Potential'))
-        #     sigma.assign(kwargs.get('sigma'))
+        else:
+            phi.assign(kwargs.get('Initial Potential'))
+            sigma.assign(kwargs.get('sigma'))
 
         # Apply the initial guesses to the main function.
         phisigma.apply('from subfunctions')
 
         # Solve the problem with the solver options (either default or user).
-        problem = mp.BlockNonlinearProblem(F, phisigma, bcs, J)
+        problem = mp.BlockNonlinearProblem(F, phisigma, bcs_block, J)
         solver = mp.BlockPETScSNESSolver(problem)
         solver_type = [i for i in solver_parameters.keys()][0]
         solver.parameters.update(solver_parameters[solver_type])
         solver.solve()
 
         # Extract the solutions.
-        (phiv, phil, sigma) = phisigma.block_split()
+        (phi, sigma) = phisigma.block_split()
         # --------------------------------------------------------------------
 
         # Store the solution in the class object.
-        self.phiv = phiv
-        self.phil = phil
+        self.phi = phi
         self.sigma = sigma
 
-        return phiv, phil, sigma
+        return phi, sigma
 
     def solve_initial_problem(self):
         """
@@ -598,8 +554,11 @@ class Poisson(object):
         V = fn.FunctionSpace(self.mesh, 'Lagrange', 2)
 
         # Define the restrictions.
-        restrictions_init = [self.lower_rtc, self.upper_rtc,
-                             self.interface_rtc]
+        restrictions_init = []
+        for key in self.subdomains_ids.keys():
+            key = key.lower() + '_rtc'
+            restrictions_init.append(self.restrictions_dict[key])
+        restrictions_init.append(self.restrictions_dict['interface_rtc'])
 
         # Define the block Function Space.
         W = mp.BlockFunctionSpace([V, V, V], restrict=restrictions_init)
@@ -615,10 +574,10 @@ class Poisson(object):
         r = fn.SpatialCoordinate(self.mesh)[0]
 
         #                                       phiv                                                         phil                              sigma             #
-        aa = [[r*fn.inner(fn.grad(phiv), fn.grad(v1))*self.dx(self.lower_subdomain_id)  , 0                                       , 0                        ],  # Trial Function v1
-              [0                                                                        , phil*v2*self.dx(self.upper_subdomain_id), 0                        ],  # Trial function v2
+        aa = [[r*fn.inner(fn.grad(phiv), fn.grad(v1))*self.dx(self.subdomains_ids['Vacuum'])  , 0                                       , 0                        ],  # Trial Function v1
+              [0                                                                        , phil*v2*self.dx(self.subdomains_ids['Liquid']), 0                        ],  # Trial function v2
               [0                                                                        , 0                                       , sigma("+")*l("+")*self.dS]]  # Trial function l
-        bb = [fn.Constant(0.)*v1*self.dx(self.lower_subdomain_id), fn.Constant(0.)*v2*self.dx(self.upper_subdomain_id), fn.Constant(0.)*l("+")*self.dS]
+        bb = [fn.Constant(0.)*v1*self.dx(self.subdomains_ids['Vacuum']), fn.Constant(0.)*v2*self.dx(self.subdomains_ids['Liquid']), fn.Constant(0.)*l("+")*self.dS]
 
         # Assemble the previous expressions.
         AA = mp.block_assemble(aa)
@@ -631,9 +590,9 @@ class Poisson(object):
         for i in self.boundary_conditions:
             if 'Dirichlet' in self.boundary_conditions[i]:
                 sub_id = self.boundary_conditions[i]['Dirichlet'][1]
-                if sub_id.lower() == self.surfaces_names[0].lower():
+                if sub_id.lower() == list(self.subdomains_ids.keys())[0].lower():
                     sub_id = 0
-                elif sub_id.lower() == self.surfaces_names[1].lower():
+                elif sub_id.lower() == list(self.subdomains_ids.keys())[1].lower():
                     sub_id = 1
                 else:
                     raise ValueError(f'Subdomain {sub_id} is not defined on the .geo file.')
@@ -862,28 +821,16 @@ class Poisson(object):
             Dolfin/FEniCS function containing the electric field information.
 
         """
-        if subdomain_id.lower() == self.surfaces_names[0].lower():
-            subdomain_id = self.lower_subdomain_id
-            phi_sub = Poisson.block_project(self.phi, self.mesh,
-                                            self.lower_rtc, self.subdomains,
-                                            subdomain_id, space_type='scalar')
-            rtc = self.lower_rtc
-        elif subdomain_id.lower() == self.surfaces_names[1].lower():
-            subdomain_id = self.upper_subdomain_id
-            phi_sub = Poisson.block_project(self.phi, self.mesh,
-                                            self.upper_rtc, self.subdomains,
-                                            subdomain_id, space_type='scalar')
-            rtc = self.upper_rtc
-        else:
-            raise ValueError(f'Valid subdomain ids are {self.surfaces_names[0]} and {self.surfaces_names[1]}. You introduced {subdomain_id}.')
+        subdomain_id_num = self.subdomains_ids[subdomain_id]
+        rtc = self.restrictions_dict[subdomain_id.lower() + '_rtc']
+        phi_sub = Poisson.block_project(self.phi, self.mesh, rtc, self.subdomains, subdomain_id_num,
+                                        space_type='scalar')
         E_tensor = -fn.grad(phi_sub)
         E = Poisson.block_project(E_tensor, self.mesh, rtc, self.subdomains,
-                                  subdomain_id, space_type='vectorial')
+                                  subdomain_id_num, space_type='vectorial')
         return E
 
-    @staticmethod
-    def get_normal_field(n, E, mesh, boundaries, interface_rtc,
-                         boundary_id, sign="+"):
+    def get_normal_field(self, n, E):
         """
         Get the normal field of the given electric field
 
@@ -915,13 +862,13 @@ class Poisson(object):
 
         """
         E_n = fn.dot(E, n)
-        E_n = Poisson.block_project(E_n, mesh, interface_rtc,boundaries,
-                                    boundary_id, space_type='scalar',
-                                    boundary_type='internal', sign=sign)
+        E_n = Poisson.block_project(E_n, self.mesh, self.restrictions_dict['interface_rtc'], self.boundaries,
+                                    self.boundaries_ids['Interface'], space_type='scalar',
+                                    boundary_type='internal', sign=n.side(), restricted=True)
         return E_n
 
     @staticmethod
-    def split_field_components(E, coords):
+    def split_field_components(E, coords, up=0):
         """
         Split the components of the given electric field at a given coordinates
 
@@ -955,7 +902,7 @@ class Poisson(object):
         zip_coords = zip(r_coords, z_coords)
 
         for r, z in zip_coords:
-            E_eval = E([r, z])
+            E_eval = E([r, z+up])
             E_r = np.append(E_r, E_eval[0])
             E_z = np.append(E_z, E_eval[1])
         return E_r, E_z
@@ -969,3 +916,14 @@ class Poisson(object):
         den = r0**2
 
         return num/den
+
+    def check_charge_conservation(self):
+        n = fn.FacetNormal(self.mesh)
+        E_v_n = fn.dot(-fn.grad(self.phiv), n)
+        E_l_n = (E_v_n - self.sigma)/self.eps_r
+
+        j_ev = (self.sigma*self.T_h)/(self.eps_r*self.Chi) * fn.exp(-self.Phi/self.T_h * (
+        1-pow(self.B, 1/4)*fn.sqrt(E_v_n)))
+        j_cond = (1+self.Lambda*(self.T_h-1))*E_l_n
+
+        return j_ev - j_cond
