@@ -7,14 +7,16 @@ import fenics as fn
 import dolfin as df
 import multiphenics as mp
 import numpy as np
-import re
+import os
+
 from Tools.PostProcessing import PostProcessing
+from Tools.GMSH_Interface import GMSHInterface
 
 
 df.parameters["ghost_mode"] = "shared_facet"  # required by dS
 
 
-class Navier_Stokes(object):
+class NavierStokes(object):
     def __init__(self, inputs, boundary_conditions, **kwargs):
 
         # Unpack the inputs.
@@ -29,6 +31,8 @@ class Navier_Stokes(object):
         self.phi = inputs['Potential']
         self.Chi = inputs['Chi']
         self.r0 = inputs['Contact line radius']
+        self.E_v = inputs['Vacuum electric field']
+        self.E_v_n = inputs['Vacuum normal component']
 
         # Load the boundary conditions.
         self.boundary_conditions = boundary_conditions
@@ -39,23 +43,29 @@ class Navier_Stokes(object):
         kwargs.setdefault('subdomains', None)
         kwargs.setdefault('mesh', None)
         kwargs.setdefault('restrictions', None)
-        kwargs.setdefault('mesh_path', None)
+        kwargs.setdefault('mesh_path', '')
         kwargs.setdefault('restrictions_path', None)
-        kwargs.setdefault('filename', None)
         kwargs.setdefault('restrictions_names', None)
         kwargs.setdefault('interface_name', None)
+        kwargs.setdefault('filename', '')
 
         # Set kwargs to the corresponding variables.
         self.boundaries = kwargs.get('boundaries')
         self.subdomains = kwargs.get('subdomains')
         self.mesh = kwargs.get('mesh')
-        self.restrictions = kwargs.get('restrictions')
-        self.restrictionspath = kwargs.get('restrictions_path')
-        self.meshpath = kwargs.get('mesh_path')
-        self.filename = kwargs.get('filename')
-        self.restrictionsnames = kwargs.get('restrictions_names')
+        self.restrictions_dict = kwargs.get('restrictions')
+        self.restrictions_path = kwargs.get('restrictions_path')
+        self.mesh_folder_path = kwargs.get('mesh_path')
         self.boundaries_ids = kwargs.get('boundaries_ids')
         self.interface_name = kwargs.get('interface_name')
+        self.filename = kwargs.get('filename')
+
+        # Initialize other variables.
+        self.geo_file = self.mesh_folder_path + '/' + self.filename.split('.')[0] + '.geo'
+        self.subdomains_ids = None
+        self.dx = None
+        self.ds = None
+        self.dS = None
 
     def check_mesh(self):
         """
@@ -78,94 +88,51 @@ class Navier_Stokes(object):
             raise TypeError('The type of the loaded mesh is not the proper one. It must have the type dolfin.cpp.mesh.Mesh.')
 
     def load_mesh(self):
-        return fn.Mesh(self.meshpath + '/' + self.filename.split('.')[0] +
-                       '.xml')
+        return fn.Mesh(self.mesh_folder_path)
 
     def load_restrictions(self):
-        self.restrictions = {}
-        D = self.mesh.topology().dim
-        for rtc_name in self.restrictionsnames:
-            self.restrictions[rtc_name] = mp.MeshRestriction(self.mesh, self.restrictionspath + '/' + rtc_name + ".rtc.xml")
+        self.restrictions_dict = dict()
+        for rtc_folder in os.listdir(self.restrictions_path):
+            rtc_name = rtc_folder.split('_')[0].lower() + '_rtc'
+            self.restrictions_dict[rtc_name] = mp.MeshRestriction(self.mesh, self.restrictions_path + '/' + rtc_folder)
 
     def get_mesh(self):
-
         # Do proper checks before loading the mesh.
-        if self.meshpath is None and self.mesh is None:
+        if self.mesh_folder_path is None and self.mesh is None:
             raise Exception('If a mesh has not been loaded when loading this class, user must include a path to load the .xml file under the variable mesh_path.')
-        elif self.meshpath is not None and self.mesh is None and self.filename is None:
-            raise NameError('When a mesh is not loaded, the user must specify the path to the .xml file and the name of the file. You did not introduce the name of the file. Introduce it when loading the class with variable filename.')
-        elif self.meshpath is not None and self.mesh is None and self.filename is not None:
+        elif self.mesh_folder_path is not None and self.mesh is None:
+            self.filename = self.mesh_folder_path.split('/')[-1]
             self.geo_file = self.filename.split('.')[0] + '.geo'
+            self.mesh_folder_path = '/'.join(self.mesh_folder_path.split('/')[:-1])
             self.mesh = self.load_mesh()
         elif self.mesh is not None:
             self.check_mesh()
 
     def get_boundaries(self):
-
         if self.boundaries is None:
             bound_name = self.filename.split('.')[0] + '_facet_region.xml'
-            file = self.meshpath + '/' + bound_name
+            file = self.mesh_folder_path + '/' + bound_name
             self.boundaries = fn.MeshFunction('size_t', self.mesh, file)
 
         if self.boundaries_ids is None:
-            self.boundaries_ids = gmsh_handle.get_physical_curves_and_tags(self.geo_file, self.meshpath)
-
-            if self.interface_name is not None:
-                self.boundaries_ids['Interface'] = self.boundaries_ids.pop(self.interface_name)
-            else:
-                raise Exception('If the boundaries ids are not introduced, the interface name must be included.')
-
-            # Now, we should clean the keys of the dictionary.
-            """
-            The process below is carried out so it is easier for the user to
-            call the boundaries.
-            """
-            re_pattern = re.compile(r"(.*?)")  # Check for quoted words.
-            old_keys = [key for key in self.boundaries_ids.keys()]
-            new_keys = []
-            for key in self.boundaries_ids:
-                string = re_pattern.findall(key)
-                final_str = ''
-                for count in string:
-                    if count.isalpha() or '_' in count:
-                        final_str += count
-                new_keys.append(final_str)
-            for new_key, old_key in zip(new_keys, old_keys):
-                self.boundaries_ids[new_key] = self.boundaries_ids.pop(old_key)
+            self.boundaries_ids, _ = GMSHInterface.get_boundaries_ids(self.geo_file)
 
     def get_subdomains(self):
 
         if self.subdomains is None:
             sub_name = self.filename.split('.')[0] + '_physical_region.xml'
-            file = self.meshpath + '/' + sub_name
+            file = self.mesh_folder_path + '/' + sub_name
             self.subdomains = df.MeshFunction('size_t', self.mesh, file)
 
         # Obtain the ids of the subdomains.
-        check_first = gmsh_handle.check_which_physical_first(self.filename,
-                                                             self.meshpath)
-
-        # Check if the proper number of subdomains were defined in the .geo.
-        gmsh_handle.get_physical_surfaces(self.geo_file, self.meshpath)
-
-
-        if check_first[1]:
-            self.lower_subdomain_id = 1
-            self.upper_subdomain_id = 2
-        else:
-            try:
-                self.lower_subdomain_id = max([val for val in self.boundaries_ids.values()]) + 1
-                self.upper_subdomain_id = self.lower_subdomain_id + 1
-            except AttributeError:
-                raise AttributeError('The boundaries ids have not been generated. Generate them first and re-run this method.')
+        self.subdomains_ids = GMSHInterface.get_subdomains_ids(self.geo_file)
 
     def get_restrictions(self):
-        if self.restrictions is None and self.restrictionspath is None:
+        if self.restrictions_dict is None and self.restrictions_path is None:
             raise Exception('If restrictions are not loaded when initializing this class, the path to them must be included.')
-        elif self.restrictions is None and self.restrictionspath is not None and self.restrictionsnames is None:
-            raise NameError('The names of the restrictions names were not loaded.')
-        elif self.restrictions is None and self.restrictionspath is not None and self.restrictionsnames is not None:
+        elif self.restrictions_dict is None and self.restrictions_path is not None:
             self.load_restrictions()
-        elif self.restrictions is not None:
+        elif self.restrictions_dict is not None:
             pass
 
     def get_measures(self):
@@ -178,25 +145,13 @@ class Navier_Stokes(object):
         # --------------------------------------------------------------------
         # DEFINE THE INPUTS #
         # --------------------------------------------------------------------
-        self.geo_file = self.filename.split('.')[0] + '.geo'
         self.get_mesh()
         self.get_boundaries()
         self.get_subdomains()
         self.get_restrictions()
 
-        lower_rtc = self.restrictions[self.restrictionsnames[0]]
-        upper_rtc = self.restrictions[self.restrictionsnames[1]]
-        try:
-            interface_rtc = self.restrictions['interface_restriction']
-        except KeyError:
-            try:
-                interface_rtc = self.restrictions[self.interface_name]
-            except KeyError:
-                try:
-                    interface_rtc = self.restrictions['Interface']
-                except KeyError:
-                    raise KeyError("Interface restriction name was not one of the expected ones: '{self.interface_name}', 'Interface' or 'interface_restriction'")
-        block_restrictions = [upper_rtc, upper_rtc, interface_rtc]
+        block_restrictions = [self.restrictions_dict['liquid_rtc'], self.restrictions_dict['liquid_rtc'],
+                              self.restrictions_dict['interface_rtc']]
 
         # --------------------------------------------------------------------
 
@@ -219,7 +174,7 @@ class Navier_Stokes(object):
         (u, p, theta) = mp.block_split(trial)
 
         u_prev = fn.Function(V)
-        u_prev.assign(fn.Constant((0., 0.)))
+        u_prev.assign(fn.Constant((0.1, 0.1)))
 
         # --------------------------------------------------------------------
 
@@ -239,47 +194,36 @@ class Navier_Stokes(object):
         t = fn.as_vector((n[1], -n[0]))
         e_r = fn.Constant((1., 0.))  # Define unit radial vector
         e_z = fn.Constant((0., 1.))  # Define unit axial vector
-        aux_term = (self.eps_r*self.Ca*self.B**0.5)/(1+self.Lambda*(self.T_h-1)
-                                                     )
-
-        # Compute the eletric field and its normal component.
-        """
-        Since we will be using the tangential component of the electric field,
-        and it must be the same for the vacuum and liquid fields, we will use
-        the vacuum field.
-        """
-        E_v = -fn.grad(self.phi("-"))
-        E_v_n = fn.dot(E_v, n("-"))
+        aux_term = (self.eps_r*self.Ca*np.sqrt(self.B))/(1+self.Lambda*(self.T_h-1))
 
         # Define the term a.
-        a = r * aux_term * fn.inner((fn.grad(u)+fn.grad(u).T),(fn.grad(v)+fn.grad(v).T))*self.dx(self.upper_subdomain_id)
-        a += 2*(aux_term*fn.dot(u, e_r)*fn.dot(v, e_r))/r*self.dx(self.upper_subdomain_id)
+        a = r * aux_term * fn.inner((fn.grad(u)+fn.grad(u).T), (fn.grad(v)+fn.grad(v).T))*self.dx(
+            self.subdomains_ids['Liquid'])
+        a += 2/r*aux_term*fn.dot(u, e_r)*fn.dot(v, e_r)*self.dx(self.subdomains_ids['Liquid'])
 
         # Define the term d.
-        nabla_term_r = r*fn.dot(u_prev, e_r)
-        nabla_term_z = fn.dot(u_prev, e_z)
-        d = r*self.eps_r**2*self.We*fn.dot((1/r*nabla_term_r.dx(0)+nabla_term_z.dx(1))*u, v)*self.dx(self.upper_subdomain_id)
+        del_operation = fn.dot(fn.grad(u), u_prev)
+        d = r*self.eps_r**2*self.We*fn.dot(del_operation, v)*self.dx(self.subdomains_ids['Liquid'])
 
         # Define the term l1.
         def evaporated_charge():
-            return (self.sigma*self.T_h)/(self.eps_r*self.Chi)*fn.exp(-self.Phi/self.T_h*(1-self.B**0.25*fn.sqrt(E_v_n)))
+            return (self.sigma*self.T_h)/(self.eps_r*self.Chi)*fn.exp(
+                -self.Phi/self.T_h*(1-self.B**0.25*fn.sqrt(self.E_v_n)))
 
-        term_check = evaporated_charge()
-
-        l1 = -r*evaporated_charge()*l("-")*self.dS
+        l1 = -r*evaporated_charge()*l("+")*self.dS
 
         # Define the term l2.
-        l2 = r*self.sigma*fn.dot(E_v, t("-"))*fn.dot(v("-"), t("-"))*self.dS
+        l2 = r*self.sigma*fn.dot(self.E_v, t("+"))*fn.dot(v("+"), t("+"))*self.dS
 
         # Define the term b.
         def b(vector, scalar):
             radial_term = r*fn.dot(vector, e_r)
             axial_term = r*fn.dot(vector, e_z)
-            return -(radial_term.dx(0) + axial_term.dx(1))*scalar*self.dx(self.upper_subdomain_id)
+            return -(radial_term.dx(0) + axial_term.dx(1))*scalar*self.dx(self.subdomains_ids['Liquid'])
 
         # Define the term c.
-        c1 = -r*fn.dot(v("+"),n("+"))*theta("+")*self.dS
-        c2 = -r*fn.dot(u("+"),n("+"))*l("+")*self.dS
+        c1 = -r*fn.dot(v("+"), n("+"))*theta("+")*self.dS
+        c2 = -r*fn.dot(u("+"), n("+"))*l("+")*self.dS
 
         # Define the tensors to be solved.
         # The following order is used.
@@ -504,14 +448,14 @@ class Navier_Stokes(object):
         n = fn.FacetNormal(mesh)
         u_n = fn.dot(u, n)
 
-        u_n = Navier_Stokes.block_project(u_n, mesh, interface_rtc, boundaries,
+        u_n = NavierStokes.block_project(u_n, mesh, interface_rtc, boundaries,
                                           boundary_id, space_type='scalar',
                                           boundary_type='internal', sign='+')
-        j_ev = Navier_Stokes.block_project(j_ev, mesh, interface_rtc, boundaries,
+        j_ev = NavierStokes.block_project(j_ev, mesh, interface_rtc, boundaries,
                                           boundary_id, space_type='scalar',
                                           boundary_type='internal', sign='-',
                                           restricted=True)
-        check = u_n - j_ev
+        check = abs(u_n - j_ev)/u_n
         check = PostProcessing.extract_from_function(check, coords)
 
         return check

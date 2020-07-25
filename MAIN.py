@@ -17,7 +17,7 @@
 import os
 
 from Solvers.Poisson_solver import Poisson
-from Solvers.NS_Solver import Navier_Stokes as NS
+from Solvers.NS_Solver import NavierStokes as NS
 import fenics as fn
 import numpy as np
 
@@ -256,7 +256,7 @@ E_l_n = (Electrostatics.E_v_n-Electrostatics.sigma)/LiquidInps.eps_r
 E_l_n_array = PostProcessing.extract_from_function(E_l_n, coords_mids)
 sigma_arr = PostProcessing.extract_from_function(Electrostatics.sigma, coords_mids)
 
-j_ev = (Electrostatics.sigma*T_h)/(LiquidInps.eps_r*Chi) * fn.exp(-Phi * (
+j_ev = (Electrostatics.sigma*T_h)/(LiquidInps.eps_r*Chi) * fn.exp(-Phi/T_h * (
         1-pow(B, 1/4)*fn.sqrt(Electrostatics.E_v_n)))
 j_cond = K*E_l_n
 I_h = Poisson.get_nd_current(boundaries, boundaries_ids, j_ev, r0)
@@ -311,33 +311,33 @@ inputs_fluids = {'Weber number': We,
                  'Phi': Phi,
                  'Chi': Chi,
                  'Potential': Electrostatics.phi,
-                 'Contact line radius': r0}
-Stokes = NS(inputs_fluids, boundary_conditions_fluids, subdomains=subdomains,
-            boundaries=boundaries, mesh=mesh, boundaries_ids=boundaries_ids,
-            restrictions_names=restrictions_names,
-            restrictions_path=restrictions_folder_path,
-            filename=ofilename_.strip(), mesh_path=mesh_folder_path)
+                 'Contact line radius': r0,
+                 'Vacuum electric field': Electrostatics.E_v,
+                 'Vacuum normal component': Electrostatics.E_v_n}
+
+Stokes = NS(inputs_fluids, boundary_conditions_fluids, subdomains=subdomains, boundaries=boundaries, mesh=mesh,
+            boundaries_ids=boundaries_ids, restrictions_path=restrictions_folder_path, mesh_path=mesh_folder_path,
+            filename=filename)
 u, p_star, theta = Stokes.solve()
 p = p_star - P_r_h + I_h*C_R
 
 # %% RETRIEVE ALL THE IMPORTANT INFORMATION.
-u_r, u_z = NS.extract_velocity_components(u, coords)
-p_arr = PostProcessing.extract_from_function(p, coords)
-u_r, u_z, p_arr = PostProcessing.smooth_data(u_r, u_z, p_arr,
-                                             window_length=801, polyorder=3)
-check = NS.check_evaporation_condition(mesh, meniscus_rtc, boundaries, u,
-                                       j_n_e_h, coords,
-                                       boundary_id=boundaries_ids['Interface'])
-plotpy.lineplot([(r_mids, u_r, r'Radial ($\hat{r}$)'),
-                 (r_mids, u_z, r'Axial ($\hat{z}$)')],
+u_r, u_z = NS.extract_velocity_components(u, coords_nodes)
+p_arr = PostProcessing.extract_from_function(p, coords_nodes)
+
+plotpy.lineplot([(r_nodes, u_r, r'Radial ($\hat{r}$)'),
+                 (r_nodes, u_z, r'Axial ($\hat{z}$)')],
                 xlabel=r'$\hat{r}$', ylabel=r'$\hat{u}$',
                 fig_title='Components of the velocity field',
                 legend_title='Field Components')
 
-plotpy.lineplot([(r_mids, p_arr)],
+plotpy.lineplot([(r_nodes, p_arr)],
                 xlabel=x_label, ylabel=r'$\hat{p}$',
                 fig_title='Pressure along the meniscus')
 
+# Check the normal component of the velocity and the evaporated charge.
+check = NS.check_evaporation_condition(mesh, Electrostatics.restrictions_dict['interface_rtc'], boundaries, u, j_ev,
+                                       coords_mids, boundary_id=boundaries_ids['Interface'])
 plotpy.lineplot([(r_mids, check)],
                 xlabel=x_label, ylabel=r'$\hat{u}\cdot n - \hat{j}_n^e$',
                 fig_title='Check of the charge evaporation.')

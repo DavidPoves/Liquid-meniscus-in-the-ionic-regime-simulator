@@ -100,6 +100,9 @@ check_grad_2 = mp.BlockFunction(W)
 mp.block_solve(AA, check_grad_2.block_vector(), BB)
 
 # %% TEST
+V = fn.FunctionSpace(mesh, 'DG', 2)
+check_full = fn.project(check[0] + check[1], V)
 V_vec = fn.VectorFunctionSpace(mesh, 'DG', 1)
-check_ = fn.project(fn.grad(check[0]), V_vec)
-check_2 = fn.project(fn.grad(check_full), V_vec)
+gradient = fn.project(fn.grad(check_full), V_vec)
+
+
