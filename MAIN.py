@@ -336,8 +336,13 @@ plotpy.lineplot([(r_nodes, p_arr)],
                 fig_title='Pressure along the meniscus')
 
 # Check the normal component of the velocity and the evaporated charge.
-check = NS.check_evaporation_condition(mesh, Electrostatics.restrictions_dict['interface_rtc'], boundaries, u, j_ev,
-                                       coords_mids, boundary_id=boundaries_ids['Interface'])
+check, u_n = NS.check_evaporation_condition(mesh, Electrostatics.restrictions_dict['interface_rtc'], boundaries, u,
+                                            j_ev, coords_mids, boundary_id=boundaries_ids['Interface'])
+u_n_array = PostProcessing.extract_from_function(u_n, coords_mids)
 plotpy.lineplot([(r_mids, check)],
                 xlabel=x_label, ylabel=r'$\hat{u}\cdot n - \hat{j}_n^e$',
                 fig_title='Check of the charge evaporation.')
+
+plotpy.lineplot([(r_mids, u_n_array)],
+                xlabel=x_label, ylabel=r'$\hat{u}_n$',
+                fig_title='Normal Component of the velocity field.')

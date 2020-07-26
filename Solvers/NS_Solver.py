@@ -159,8 +159,8 @@ class NavierStokes(object):
         # FUNCTION SPACES #
         # --------------------------------------------------------------------
         V = fn.VectorFunctionSpace(self.mesh, "CG", 2)
-        Q = fn.FunctionSpace(self.mesh, "CG", 1)
-        L = fn.FunctionSpace(self.mesh, "DGT", 1)
+        Q = fn.FunctionSpace(self.mesh, "DG", 1)
+        L = fn.FunctionSpace(self.mesh, "DGT", 0)  # DGT 0.
         W = mp.BlockFunctionSpace([V, Q, L], restrict=block_restrictions)
         # --------------------------------------------------------------------
 
@@ -213,7 +213,7 @@ class NavierStokes(object):
         l1 = -r*evaporated_charge()*l("+")*self.dS
 
         # Define the term l2.
-        l2 = r*self.sigma*fn.dot(self.E_v, t("+"))*fn.dot(v("+"), t("+"))*self.dS
+        l2 = r*self.sigma*fn.dot(self.E_v, t("-"))*fn.dot(v("+"), t("-"))*self.dS
 
         # Define the term b.
         def b(vector, scalar):
@@ -222,8 +222,8 @@ class NavierStokes(object):
             return -(radial_term.dx(0) + axial_term.dx(1))*scalar*self.dx(self.subdomains_ids['Liquid'])
 
         # Define the term c.
-        c1 = -r*fn.dot(v("+"), n("+"))*theta("+")*self.dS
-        c2 = -r*fn.dot(u("+"), n("+"))*l("+")*self.dS
+        c1 = -r*fn.dot(v("+"), n("-"))*theta("+")*self.dS
+        c2 = -r*fn.dot(u("+"), n("-"))*l("+")*self.dS
 
         # Define the tensors to be solved.
         # The following order is used.
@@ -450,12 +450,11 @@ class NavierStokes(object):
 
         u_n = NavierStokes.block_project(u_n, mesh, interface_rtc, boundaries,
                                           boundary_id, space_type='scalar',
-                                          boundary_type='internal', sign='+')
-        j_ev = NavierStokes.block_project(j_ev, mesh, interface_rtc, boundaries,
-                                          boundary_id, space_type='scalar',
-                                          boundary_type='internal', sign='-',
-                                          restricted=True)
+                                          boundary_type='internal', sign='-')
+
+        # u_n = j_ev
         check = abs(u_n - j_ev)/u_n
         check = PostProcessing.extract_from_function(check, coords)
 
-        return check
+
+        return check, u_n
