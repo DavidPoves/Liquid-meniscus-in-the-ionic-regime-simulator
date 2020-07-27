@@ -22,6 +22,7 @@ import numpy as np
 
 from Tools.GMSH_Interface import GMSHInterface
 from Tools.generate_restrictions import Restrictions
+from Tools.ObtainVectors import ObtainVectors
 from Tools.PostProcessing import PostProcessing
 
 df.parameters["ghost_mode"] = "shared_facet"  # required by dS
@@ -428,6 +429,7 @@ class Poisson(object):
         # DEFINE THE F TERM #
         # --------------------------------------------------------------------
         n = fn.FacetNormal(self.mesh)
+        t = fn.as_vector((n[1], -n[0]))
 
         # Define auxiliary terms.
         r = fn.SpatialCoordinate(self.mesh)[0]
@@ -503,6 +505,7 @@ class Poisson(object):
         # Compute the electric field at vacuum and correct the surface charge density.
         self.E_v = self.get_electric_field('Vacuum')
         self.E_v_n = self.get_normal_field(n("-"), self.E_v)
+        self.E_t = self.get_tangential_component(t("+"), self.E_v)
         C = self.Phi / self.T_h * (1 - self.B ** 0.25 * fn.sqrt(self.E_v_n))
         self.sigma = (K * self.E_v_n) / (K + self.T_h / self.Chi * fn.exp(-C))
 
@@ -765,7 +768,7 @@ class Poisson(object):
 
         return sol[0]
 
-    def get_electric_field(self, subdomain_id):
+    def get_electric_field(self, subdomain_id, **kwargs):
         """
         Get the electric field given the potential and project it into the
         specified subdomain using the block_project method.
@@ -778,14 +781,35 @@ class Poisson(object):
         E : dolfin.function.function.Function
             Dolfin/FEniCS function containing the electric field information.
         """
-        subdomain_id_num = self.subdomains_ids[subdomain_id]
-        rtc = self.restrictions_dict[subdomain_id.lower() + '_rtc']
-        phi_sub = Poisson.block_project(self.phi, self.mesh, rtc, self.subdomains, subdomain_id_num,
-                                        space_type='scalar')
-        E_tensor = -fn.grad(phi_sub)
-        E = Poisson.block_project(E_tensor, self.mesh, rtc, self.subdomains,
-                                  subdomain_id_num, space_type='vectorial')
-        return E
+        if subdomain_id == 'Vacuum' or subdomain_id == 'vacuum':
+            subdomain_id_num = self.subdomains_ids[subdomain_id]
+            rtc = self.restrictions_dict[subdomain_id.lower() + '_rtc']
+            phi_sub = Poisson.block_project(self.phi, self.mesh, rtc, self.subdomains, subdomain_id_num,
+                                            space_type='scalar')
+            E_tensor = -fn.grad(phi_sub)
+            E = Poisson.block_project(E_tensor, self.mesh, rtc, self.subdomains,
+                                      subdomain_id_num, space_type='vectorial')
+            return E
+        elif subdomain_id == 'Liquid' or subdomain_id == 'liquid':
+            E_l_r, E_l_z = Poisson.get_liquid_electric_field(kwargs)
+            return E_l_r, E_l_z
+
+    @staticmethod
+    def get_liquid_electric_field(**kwargs):
+        n_arr = ObtainVectors.get_normal_vectors_boundary(kwargs.get('mesh'), kwargs.get('subdomain_data'),
+                                                          kwargs.get('boundary_id'))
+        n_arr[:, 1] *= (-1)
+        t_arr = ObtainVectors.get_tangential_vectors_boundary(n_arr)
+        E_l_r = []
+        E_l_z = []
+        E_l_n_array = kwargs.get('normal_liquid')
+        E_t_array = kwargs.get('tangential_liquid')
+        for i in range(len(E_l_n_array)):
+            l_r = (E_l_n_array[i] - E_t_array[i] / t_arr[i, 1] * n_arr[i, 1]) / (n_arr[i, 0] - t_arr[i, 0] / t_arr[i, 1] * n_arr[i, 1])
+            l_z = (E_t_array[i] - l_r * t_arr[i, 0]) / t_arr[i, 1]
+            E_l_r.append(l_r)
+            E_l_z.append(l_z)
+        return E_l_r, E_l_z
 
     def get_normal_field(self, n, E):
         """
@@ -821,8 +845,15 @@ class Poisson(object):
                                     boundary_type='internal', sign=n.side(), restricted=True)
         return E_n
 
+    def get_tangential_component(self, t, E):
+        E_t = fn.dot(E, t)
+        E_t = Poisson.block_project(E_t, self.mesh, self.restrictions_dict['interface_rtc'], self.boundaries,
+                                    self.boundaries_ids['Interface'], space_type='scalar',
+                                    boundary_type='internal', sign=t.side(), restricted=True)
+        return E_t
+
     @staticmethod
-    def split_field_components(E, coords, up=0):
+    def split_field_components(E, coords):
         """
         Split the components of the given electric field at a given coordinates
         Parameters
@@ -853,7 +884,7 @@ class Poisson(object):
         zip_coords = zip(r_coords, z_coords)
 
         for r, z in zip_coords:
-            E_eval = E([r, z+up])
+            E_eval = E([r, z])
             E_r = np.append(E_r, E_eval[0])
             E_z = np.append(E_z, E_eval[1])
         return E_r, E_z

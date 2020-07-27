@@ -66,6 +66,11 @@ class NavierStokes(object):
         self.dx = None
         self.ds = None
         self.dS = None
+        self.u = None
+        self.u_n = None
+        self.u_t = None
+        self.p_star = None
+        self.theta = None
 
     def check_mesh(self):
         """
@@ -191,7 +196,7 @@ class NavierStokes(object):
         # --------------------------------------------------------------------
         r = fn.SpatialCoordinate(self.mesh)[0]
         n = fn.FacetNormal(self.mesh)
-        t = fn.as_vector((n[1], -n[0]))
+        tan_vector = fn.as_vector((n[1], -n[0]))
         e_r = fn.Constant((1., 0.))  # Define unit radial vector
         e_z = fn.Constant((0., 1.))  # Define unit axial vector
         aux_term = (self.eps_r*self.Ca*np.sqrt(self.B))/(1+self.Lambda*(self.T_h-1))
@@ -213,7 +218,7 @@ class NavierStokes(object):
         l1 = -r*evaporated_charge()*l("+")*self.dS
 
         # Define the term l2.
-        l2 = r*self.sigma*fn.dot(self.E_v, t("-"))*fn.dot(v("+"), t("-"))*self.dS
+        l2 = r*self.sigma*fn.dot(self.E_v, tan_vector("-"))*fn.dot(v("+"), tan_vector("-"))*self.dS
 
         # Define the term b.
         def b(vector, scalar):
@@ -274,7 +279,22 @@ class NavierStokes(object):
         # Solve.
         uptheta = mp.BlockFunction(W)
         mp.block_solve(AA, uptheta.block_vector(), BB)
-        (u, p, t) = uptheta.block_split()
+        (u, p, theta) = uptheta.block_split()
+
+        self.u = u
+        self.p_star = p
+        self.theta = theta
+
+        # Compute normal and tangential velocity components.
+        u_n = fn.dot(u, n)
+        self.u_n = NavierStokes.block_project(u_n, self.mesh, self.restrictions_dict['interface_rtc'], self.boundaries,
+                                              self.boundaries_ids['Interface'], space_type='scalar',
+                                              boundary_type='internal', sign='-')
+
+        u_t = fn.dot(u, tan_vector)
+        self.u_t = NavierStokes.block_project(u_t, self.mesh, self.restrictions_dict['interface_rtc'], self.boundaries,
+                                              self.boundaries_ids['Interface'], space_type='scalar',
+                                              boundary_type='internal', sign='+')
 
         return u, p, theta
 
@@ -442,19 +462,10 @@ class NavierStokes(object):
         return u_r, u_z
 
     @staticmethod
-    def check_evaporation_condition(mesh, interface_rtc, boundaries, u, j_ev,
-                                    coords, boundary_id=7):
-
-        n = fn.FacetNormal(mesh)
-        u_n = fn.dot(u, n)
-
-        u_n = NavierStokes.block_project(u_n, mesh, interface_rtc, boundaries,
-                                          boundary_id, space_type='scalar',
-                                          boundary_type='internal', sign='-')
+    def check_evaporation_condition(u_n, j_ev, coords):
 
         # u_n = j_ev
-        check = abs(u_n - j_ev)/u_n
+        check = abs(u_n - j_ev)
         check = PostProcessing.extract_from_function(check, coords)
 
-
-        return check, u_n
+        return check

@@ -248,6 +248,7 @@ normal components at the interface.
 E_v_r, E_v_z = Poisson.split_field_components(Electrostatics.E_v, coords_nodes)
 
 E_v_n_array = PostProcessing.extract_from_function(Electrostatics.E_v_n, coords_mids)
+E_t_array = PostProcessing.extract_from_function(Electrostatics.E_t, coords_mids)
 
 # Compute the non dimensional evaporated charge and current.
 K = 1+Lambda*(T_h - 1)
@@ -255,6 +256,11 @@ K = 1+Lambda*(T_h - 1)
 E_l_n = (Electrostatics.E_v_n-Electrostatics.sigma)/LiquidInps.eps_r
 E_l_n_array = PostProcessing.extract_from_function(E_l_n, coords_mids)
 sigma_arr = PostProcessing.extract_from_function(Electrostatics.sigma, coords_mids)
+
+# Get components of the liquid field.
+E_l_r, E_l_z = Poisson.get_liquid_electric_field(mesh=mesh, subdomain_data=boundaries,
+                                                 boundary_id=boundaries_ids['Interface'], normal_liquid=E_l_n_array,
+                                                 tangential_liquid=E_t_array)
 
 j_ev = (Electrostatics.sigma*T_h)/(LiquidInps.eps_r*Chi) * fn.exp(-Phi/T_h * (
         1-pow(B, 1/4)*fn.sqrt(Electrostatics.E_v_n)))
@@ -275,6 +281,16 @@ plotpy.lineplot([(r_nodes, E_v_r, r'Radial ($\hat{r}$)'),
                 xlabel=x_label, ylabel=y_label,
                 fig_title='Components of the electric field at vacuum',
                 legend_title='Field Components')
+
+plotpy.lineplot([(r_mids, E_l_r, r'Radial ($\hat{r}$)'),
+                 (r_mids, E_l_z, r'Axial ($\hat{z}$)')],
+                xlabel=x_label, ylabel=y_label,
+                fig_title='Components of the electric field at liquid',
+                legend_title='Field Components')
+
+plotpy.lineplot([(r_mids, E_t_array)],
+                xlabel=x_label, ylabel=r'$\hat{E}_t$',
+                fig_title='Tangential component of the electric field at the meniscus')
 
 plotpy.lineplot([(r_mids, E_v_n_array, 'Vacuum'),
                  (r_mids, E_l_n_array, 'Liquid')],
@@ -336,9 +352,9 @@ plotpy.lineplot([(r_nodes, p_arr)],
                 fig_title='Pressure along the meniscus')
 
 # Check the normal component of the velocity and the evaporated charge.
-check, u_n = NS.check_evaporation_condition(mesh, Electrostatics.restrictions_dict['interface_rtc'], boundaries, u,
-                                            j_ev, coords_mids, boundary_id=boundaries_ids['Interface'])
-u_n_array = PostProcessing.extract_from_function(u_n, coords_mids)
+check = NS.check_evaporation_condition(Stokes.u_n, j_ev, coords_mids)
+u_n_array = PostProcessing.extract_from_function(Stokes.u_n, coords_mids)
+u_t_array = PostProcessing.extract_from_function(Stokes.u_t, coords_mids)
 plotpy.lineplot([(r_mids, check)],
                 xlabel=x_label, ylabel=r'$\hat{u}\cdot n - \hat{j}_n^e$',
                 fig_title='Check of the charge evaporation.')
@@ -346,3 +362,7 @@ plotpy.lineplot([(r_mids, check)],
 plotpy.lineplot([(r_mids, u_n_array)],
                 xlabel=x_label, ylabel=r'$\hat{u}_n$',
                 fig_title='Normal Component of the velocity field.')
+
+plotpy.lineplot([(r_mids, u_t_array)],
+                xlabel=x_label, ylabel=r'$\hat{u}_t$',
+                fig_title='Tangential Component of the velocity field.')
