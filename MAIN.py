@@ -80,7 +80,6 @@ LiquidInps.EMIBF4()  # Load EMIBF4 liquid properties.
 T_0 = 298.15  # Reference temperature [K]
 
 # Define values for simulation.
-r0_list = [1e-6, 2.5e-6, 4e-6, 4.5e-6, 5e-6]
 Lambda_list = [1, 12]
 E0_list = [0.99, 0.65]
 B_list = [0.0467, 0.00934]
@@ -123,14 +122,16 @@ if filename.split('.')[-1] != 'xml':
 
 # %% ELECTROSTATICS.
 # Define the values to be used for the simulation.
-r0 = r0_list[0]
-z0 = 10*r0
 T_h = 1.
 Lambda = Lambda_list[0]
 B = B_list[0]
 E0 = E0_list[0]
 Chi = (LiquidInps.h*LiquidInps.k_prime)/(Lambda*LiquidInps.k_B*LiquidInps.vacuum_perm*LiquidInps.eps_r)
 Phi = LiquidInps.Solvation_energy/(LiquidInps.k_B*T_0*T_h)
+
+r_star = ((1.602176565e-19)**6*LiquidInps.gamma)/(4*np.pi**2*LiquidInps.vacuum_perm**3*LiquidInps.Solvation_energy**4)
+r0 = r_star / B
+z0 = 10*r0
 
 # Define the constant inputs for the solver.
 inputs = {'Relative_perm': LiquidInps.eps_r,
@@ -170,7 +171,7 @@ bcs_elec_init = {'Top_Wall': {'Dirichlet': [top_potential, 'vacuum']},
 
 # Initialize the Electrostatics class, loading constant parameters.
 Electrostatics = Poisson(inputs, boundary_conditions_elec, filepath, restrictions_folder_path, checks_folder_path,
-                         boundary_conditions_init=bcs_elec_init)
+                         boundary_conditions_init=bcs_elec_init, liquid_inps=LiquidInps)
 
 # Get the mesh object.
 mesh = Electrostatics.get_mesh()
@@ -265,10 +266,15 @@ E_l_r, E_l_z = Poisson.get_liquid_electric_field(mesh=mesh, subdomain_data=bound
 j_ev = (Electrostatics.sigma*T_h)/(LiquidInps.eps_r*Chi) * fn.exp(-Phi/T_h * (
         1-pow(B, 1/4)*fn.sqrt(Electrostatics.E_v_n)))
 j_cond = K*E_l_n
-I_h = Poisson.get_nd_current(boundaries, boundaries_ids, j_ev, r0)
+
+I_h = Electrostatics.get_nd_current(j_ev)
 
 j_ev_arr = PostProcessing.extract_from_function(j_ev, coords_mids)
 j_cond_arr = PostProcessing.extract_from_function(j_cond, coords_mids)
+
+# Compute the normal component of the electric stress at the meniscus (electric pressure).
+n_taue_n = (Electrostatics.E_v_n**2-LiquidInps.eps_r*E_l_n**2) + (LiquidInps.eps_r-1)*Electrostatics.E_t
+n_taue_n_arr = PostProcessing.extract_from_function(n_taue_n, coords_mids)
 
 # %% DATA POSTPROCESSING.
 # Check charge conservation.
@@ -301,6 +307,14 @@ plotpy.lineplot([(r_mids, E_v_n_array, 'Vacuum'),
 plotpy.lineplot([(r_mids, sigma_arr)],
                 xlabel=x_label, ylabel=r'$\hat{\sigma}$',
                 fig_title='Radial evolution of the surface charge density')
+
+plotpy.lineplot([(r_mids, j_ev_arr)],
+                xlabel=x_label, ylabel=r'$\hat{j}_e$',
+                fig_title='Charge evaporation along the meniscus')
+
+plotpy.lineplot([(r_mids, n_taue_n_arr)],
+                xlabel=x_label, ylabel=r'$\mathbf{n}\cdot\hat{\bar{\bar{\tau}}}_e \cdot \mathbf{n}$',
+                fig_title='Normal component of the electric stress at the meniscus')
 
 # %% SOLVE STOKES EQUATION.
 # Define the required non dimensional parameters.
@@ -336,6 +350,9 @@ Stokes = NS(inputs_fluids, boundary_conditions_fluids, subdomains=subdomains, bo
             filename=filename)
 u, p_star, theta = Stokes.solve()
 p = p_star - P_r_h + I_h*C_R
+theta_fun = NS.block_project(theta, mesh, Electrostatics.restrictions_dict['interface_rtc'], boundaries,
+                             boundaries_ids['Interface'], space_type='scalar', boundary_type='internal')
+theta_fun_arr = PostProcessing.extract_from_function(theta_fun, coords_mids)
 
 # %% RETRIEVE ALL THE IMPORTANT INFORMATION.
 u_r, u_z = NS.extract_velocity_components(u, coords_nodes)
@@ -366,3 +383,7 @@ plotpy.lineplot([(r_mids, u_n_array)],
 plotpy.lineplot([(r_mids, u_t_array)],
                 xlabel=x_label, ylabel=r'$\hat{u}_t$',
                 fig_title='Tangential Component of the velocity field.')
+
+plotpy.lineplot([(r_mids, theta_fun_arr)],
+                xlabel=x_label, ylabel=r'$\mathbf{n}\cdot\hat{\bar{\bar{\tau}}}_m \cdot \mathbf{n}$',
+                fig_title='Normal component of the hydraulic stress at the meniscus')

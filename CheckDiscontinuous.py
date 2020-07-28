@@ -71,5 +71,3 @@ bc = fn.DirichletBC(V, 10, boundaries, boundaries_ids['Top_Wall'], method='geome
 phi = fn.Function(V)
 fn.solve(a == L, phi, bc)
 fn.plot(phi)
-
-dolfin_dg.EllipticOperator()

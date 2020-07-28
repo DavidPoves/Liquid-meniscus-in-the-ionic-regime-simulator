@@ -36,7 +36,7 @@ used in this part.
 
 class Poisson(object):
     def __init__(self, inputs, boundary_conditions, msh_filepath, restrictionspath, checkspath,
-                 boundary_conditions_init=None):
+                 boundary_conditions_init=None, liquid_inps=None):
 
         self.filename = msh_filepath.split('/')[-1]
         self.meshpath = msh_filepath
@@ -56,6 +56,7 @@ class Poisson(object):
         self.Chi = inputs['Chi']
         self.B = inputs['B']
         self.j_conv = inputs['Convection charge']
+        self.liquid_inps = liquid_inps
 
     def check_mesh(self):
         """
@@ -889,12 +890,6 @@ class Poisson(object):
             E_z = np.append(E_z, E_eval[1])
         return E_r, E_z
 
-    @staticmethod
-    def get_nd_current(boundaries, boundaries_ids, j_ev_nd, r0):
-        dS = fn.Measure('dS')(subdomain_data=boundaries)  # Internal facet differential.
-        dS = dS(boundaries_ids['Interface'])  # Restrict to the interface.
+    def get_nd_current(self, j_ev_nd):
 
-        num = fn.assemble(j_ev_nd*dS)
-        den = r0**2
-
-        return num/den
+        return fn.assemble(j_ev_nd*self.dS(self.boundaries_ids['Interface']))
