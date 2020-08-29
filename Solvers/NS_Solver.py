@@ -296,7 +296,12 @@ class NavierStokes(object):
                                               self.boundaries_ids['Interface'], space_type='scalar',
                                               boundary_type='internal', sign='+')
 
-        return u, p, theta
+        # Compute the convection charge transport.
+        special = (fn.Identity(self.mesh.topology().dim()) - fn.outer(n, n))*fn.grad(self.sigma)
+        self.j_conv = self.sigma*fn.dot(n, fn.dot(fn.grad(u), n)) - fn.dot(u, special)
+        self.j_conv = NavierStokes.block_project(self.j_conv, self.mesh, self.restrictions_dict['interface_rtc'],
+                                                 self.boundaries, self.boundaries_ids['Interface'], space_type='scalar',
+                                                 boundary_type='internal', sign='-')
 
     @staticmethod
     def block_project(u, mesh, restriction, subdomain_data, project_id,

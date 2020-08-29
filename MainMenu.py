@@ -85,6 +85,7 @@ class GeometryGeneration(tk.Frame):
 		self.degrees_var = tk.BooleanVar(master2)
 		self.degrees = False
 		self.angle_unit = 'radians'
+		self.base_data = None
 
 		# Create the option menu.
 		self.options_dict = {'z = f(r)': 'z = f(r)', 'Expressions for r and z': 'Expressions for r and z',
@@ -183,12 +184,12 @@ class GeometryGeneration(tk.Frame):
 		num_points = int(self.number_points.get())
 		initial_ind_coord = str_2_num(self.initial_ind_coord.get())
 		final_ind_coord = str_2_num(self.final_ind_coord.get())
-		base_data = np.linspace(initial_ind_coord, final_ind_coord, num_points)
+		self.base_data = np.linspace(initial_ind_coord, final_ind_coord, num_points)
 		if self.z_of_r.get() != '':
-			self.geo_gen.geometry_generator(interface_fun=self.z_of_r.get(), r=base_data)
+			self.geo_gen.geometry_generator(interface_fun=self.z_of_r.get(), r=self.base_data)
 		elif self.z_fun.get() is not None and self.r_fun.get() is not None:
 			self.geo_gen.geometry_generator(interface_fun_r=self.r_fun.get(), interface_fun_z=self.z_fun.get(),
-			                                independent_param=base_data, angle_unit=self.angle_unit)
+			                                independent_param=self.base_data, angle_unit=self.angle_unit)
 		self.msh_filename = self.geo_gen.mesh_generation()
 		main.msh_filename = self.msh_filename
 

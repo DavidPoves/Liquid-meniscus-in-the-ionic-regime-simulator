@@ -213,7 +213,7 @@ class GMSHInterface(object):
     @staticmethod
     def replace_ind_var(string, ind_var, value):
         string_original = string
-        # Define a dictionary to replace give functions by an unique non-alphanumeric character.
+        # Define a dictionary to replace given functions by an unique non-alphanumeric character.
         avail_chars = ['!', '@', '#', '$', '%', '&', '?', '¿', '¡', 'ç']
         replacements = {}
         nsp_ = NumericStringParser()

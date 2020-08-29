@@ -18,13 +18,17 @@ import os
 
 from Solvers.Poisson_solver import Poisson
 from Solvers.NS_Solver import NavierStokes as NS
+
 import fenics as fn
 import numpy as np
+import sympy as sym
+import bisect
 
 from Input_Parameters import Liquid_Properties
 from Tools.PlotPy import PlotPy
 from Tools.PostProcessing import PostProcessing
 from Tools.MeshConverter import msh2xml
+from Tools.GMSH_Interface import GMSHInterface
 
 from MainMenu import run_main_menu
 
@@ -273,7 +277,7 @@ j_ev_arr = PostProcessing.extract_from_function(j_ev, coords_mids)
 j_cond_arr = PostProcessing.extract_from_function(j_cond, coords_mids)
 
 # Compute the normal component of the electric stress at the meniscus (electric pressure).
-n_taue_n = (Electrostatics.E_v_n**2-LiquidInps.eps_r*E_l_n**2) + (LiquidInps.eps_r-1)*Electrostatics.E_t
+n_taue_n = (Electrostatics.E_v_n**2-LiquidInps.eps_r*E_l_n**2) + (LiquidInps.eps_r-1)*Electrostatics.E_t**2
 n_taue_n_arr = PostProcessing.extract_from_function(n_taue_n, coords_mids)
 
 # %% DATA POSTPROCESSING.
@@ -348,15 +352,16 @@ inputs_fluids = {'Weber number': We,
 Stokes = NS(inputs_fluids, boundary_conditions_fluids, subdomains=subdomains, boundaries=boundaries, mesh=mesh,
             boundaries_ids=boundaries_ids, restrictions_path=restrictions_folder_path, mesh_path=mesh_folder_path,
             filename=filename)
-u, p_star, theta = Stokes.solve()
-p = p_star - P_r_h + I_h*C_R
-theta_fun = NS.block_project(theta, mesh, Electrostatics.restrictions_dict['interface_rtc'], boundaries,
+Stokes.solve()
+p = Stokes.p_star - P_r_h + I_h*C_R
+theta_fun = NS.block_project(Stokes.theta, mesh, Electrostatics.restrictions_dict['interface_rtc'], boundaries,
                              boundaries_ids['Interface'], space_type='scalar', boundary_type='internal')
 theta_fun_arr = PostProcessing.extract_from_function(theta_fun, coords_mids)
 
 # %% RETRIEVE ALL THE IMPORTANT INFORMATION.
-u_r, u_z = NS.extract_velocity_components(u, coords_nodes)
+u_r, u_z = NS.extract_velocity_components(Stokes.u, coords_nodes)
 p_arr = PostProcessing.extract_from_function(p, coords_nodes)
+j_conv_arr = PostProcessing.extract_from_function(Stokes.j_conv, coords_nodes)
 
 plotpy.lineplot([(r_nodes, u_r, r'Radial ($\hat{r}$)'),
                  (r_nodes, u_z, r'Axial ($\hat{z}$)')],
@@ -384,6 +389,137 @@ plotpy.lineplot([(r_mids, u_t_array)],
                 xlabel=x_label, ylabel=r'$\hat{u}_t$',
                 fig_title='Tangential Component of the velocity field.')
 
+plotpy.lineplot([(r_nodes, j_conv_arr)],
+                xlabel=x_label, ylabel=r'$\hat{j}_{conv}$',
+                fig_title='Convection charge transport')
+
 plotpy.lineplot([(r_mids, theta_fun_arr)],
                 xlabel=x_label, ylabel=r'$\mathbf{n}\cdot\hat{\bar{\bar{\tau}}}_m \cdot \mathbf{n}$',
                 fig_title='Normal component of the hydraulic stress at the meniscus')
+
+# %% CHECK CONVECTION CHARGE TRANSPORT.
+n = fn.FacetNormal(mesh)
+special = (fn.Identity(mesh.topology().dim()) - fn.outer(n, n))*fn.grad(Stokes.sigma)
+j_conv = fn.dot(Electrostatics.sigma*n, fn.dot(fn.grad(Stokes.u), n)) - fn.dot(Stokes.u, special)
+j_conv = NS.block_project(j_conv, mesh, Electrostatics.restrictions_dict['interface_rtc'], Stokes.boundaries,
+                          Stokes.boundaries_ids['Interface'], space_type='scalar', boundary_type='internal', sign='-')
+j_conv_arr = PostProcessing.extract_from_function(j_conv, coords_mids)
+
+plotpy.lineplot([(r_mids, j_conv_arr)],
+                xlabel=x_label, ylabel=r'$\hat{j}_{conv}$',
+                fig_title='Convection charge transport')
+
+# %% SURFACE UPDATE.
+
+
+def get_derivatives(independent_param, fun):
+    """
+    Get the derivatives of a given function. Computation of the derivatives have been checked using WolframAlpha.
+    Args:
+        independent_param: string. The independent parameter with respect which the derivatives will be computed.
+        fun: string. The function to be derived. This must contain only a single independent parameter and any angle
+        should be introduced in radians.
+
+    Returns:
+        Lambda functions of the first and second derivatives, only as a function of the independent parameter.
+
+    """
+    sym_ind_param = sym.symbols(independent_param)
+    sym_exp = sym.sympify(fun)
+    fprime = sym_exp.diff(sym_ind_param)
+    fprime2 = fprime.diff(sym_ind_param)
+    fprimeLambdified = sym.lambdify(sym_ind_param, fprime, 'numpy')
+    fprime2Lambdified = sym.lambdify(sym_ind_param, fprime2, 'numpy')
+
+    return fprimeLambdified, fprime2Lambdified
+
+
+# Introduce the surface parametrization.
+try:
+    if app.geom_data.angle_unit == 'degrees':
+        z_aux = GMSHInterface.angle_handler(app.geom_data.z_fun.get())
+    else:
+        z_aux = app.geom_data.z_fun.get()
+    ind_var = GMSHInterface.get_independent_var_from_equation(z_aux)
+    ind_var_sym = sym.symbols(ind_var)
+    z_param = sym.sympify(z_aux)
+    zprimeLambdified, zprime2Lambdified = get_derivatives('s', z_param)
+    r_param = app.geom_data.r_fun.get()
+    r_param = sym.sympify(r_param)
+    ind_data = app.geom_data.base_data
+except AttributeError:
+    if app.geom_data.angle_unit == 'degrees':
+        z_aux = GMSHInterface.angle_handler(app.geom_data.z_of_r.get())
+    else:
+        z_aux = app.geom_data.z_of_r.get()
+    z_param = sym.sympify(z_aux)
+    zprimeLambdified, zprime2Lambdified = get_derivatives('r', z_param)
+    r_data = app.geom_data.base_data
+
+# Compute auxiliary terms.
+n_k = np.array([])
+del_dot_n = np.array([])
+try:  # Case when a z(r) function is defined.
+    for num in r_data:
+        n_k = np.append(n_k, (1/np.sqrt(1+zprimeLambdified(num)**2))*np.array([-zprimeLambdified(num), 1]))
+        del_dot_n = np.append(del_dot_n, ((1+zprimeLambdified(num)**2)*zprimeLambdified(num) + num*zprime2Lambdified(num))/(num*(1+zprimeLambdified(num)**2)**(3/2)))
+    del_dot_n = del_dot_n[::-1]
+    n_k = n_k.reshape((len(r_data), 2))
+    n_k = n_k[::-1]
+except NameError:  # when independent functions for r and z were defined.
+    sym_eq = sym.sympify(app.geom_data.r_fun.get())
+    ind_data = np.array([])
+    s = sym.Symbol('s')
+    for r in r_nodes:
+        ind_data = np.append(ind_data, sym.solvers.solve(sym_eq - r, s)[0])
+    for num in ind_data:
+        n_k = np.append(n_k, (1/(1+zprimeLambdified(num)**2)**0.5)*np.array([-zprimeLambdified(num), 1]))
+        del_dot_n = np.append(del_dot_n, ((1+zprimeLambdified(num)**2)*zprimeLambdified(num) + \
+                                          r_param.evalf(subs={ind_var: num})*zprime2Lambdified(num))/(
+                r_param.evalf(subs={ind_var: num})*(1+zprimeLambdified(num)**2)**(3/2)))
+    del_dot_n = del_dot_n[::-1]
+    n_k = n_k.reshape((len(ind_data), 2))
+    n_k = n_k[::-1]
+
+# Compute the residuals.
+"""
+Note: Get coordinates from the nodes to evaluate the fields.
+"""
+Q = fn.FunctionSpace(mesh, 'DG', 0)
+ux = fn.project(Stokes.u.sub(0).dx(0), Q)
+uz = fn.project(Stokes.u.sub(1).dx(1), Q)
+counter = 0
+residuals = np.array([])
+for r_coord, z_coord in zip(r_nodes, z_nodes):
+    a_diff = E_v_r[counter]**2 - E_v_z[counter]**2 - \
+             Stokes.eps_r*(E_l_r[counter]**2 - E_l_z[counter]**2) + \
+             Stokes.p_star([r_coord, z_coord]) - I_h*C_R - \
+             ((Stokes.eps_r*Ca*np.sqrt(B))/(1+Lambda*(T_h-1)))*(2*ux([r_coord, z_coord]))
+    b_diff = 2*E_v_r[counter]*E_v_z[counter] - \
+             2*Stokes.eps_r*E_l_r[counter]*E_l_z[counter] - \
+             ((Stokes.eps_r*Ca*np.sqrt(B))/(1+Lambda*(T_h-1)))*(ux([r_coord, z_coord]) +
+                                                                uz([r_coord, z_coord]))
+    c_diff = E_v_z[counter]**2 - E_v_r[counter]**2 - \
+             Stokes.eps_r*(E_l_z[counter]**2 - E_l_r[counter]**2) + \
+             Stokes.p_star([r_coord, z_coord]) - I_h*C_R - \
+             ((Stokes.eps_r*Ca*np.sqrt(B))/(1+Lambda*(T_h-1)))*(2*uz([r_coord, z_coord]))
+
+    # Build the difference tensor.
+    diff_tensor = np.array([[a_diff, b_diff],
+                            [b_diff, c_diff]])
+
+    # Compute the residual.
+    residual = np.dot(np.dot(diff_tensor, n_k[counter, :]), n_k[counter, :]) - 0.5*del_dot_n[counter]
+    residuals = np.append(residuals, residual)
+    counter += 1
+# Compute tau_s for the next iteration.
+beta = 0.05
+tau_s_next = np.array([])
+for loc in np.arange(0, len(residuals)-1):
+    tau_s_next = np.append(tau_s_next, 0.5*del_dot_n[loc] + beta*residuals[loc])
+
+# Use equation 3.72 from Ximo's thesis to get the new positions of the nodes.
+r = sym.symbols('r')
+y = sym.symbols('y', cls=sym.Function)
+diffeq = sym.Eq(r*(1+y(r).diff(r)**2)**(3/2)*tau_s_next - 0.5*(1+y(r).diff(r)**2)*y(r).diff(r) - 0.5*r*y(r).diff(r, r),
+                0)
