@@ -722,17 +722,15 @@ class Poisson(object):
         kwargs.setdefault('boundary_type', 'internal')
         kwargs.setdefault('sign', "+")
         kwargs.setdefault('restricted', False)
+        kwargs.setdefault('function_space_degree', 2)
         # Create a Block Function Space.
-        """
-        Notice in the next step that we are using a continuous space of
-        functions (CG). However, it should have been DCG, but it seems that it
-        cannot be plotted.
-        """
+        function_space_degree = kwargs.get('function_space_degree')
+
         if kwargs['space_type'] == 'scalar':
-            aux_space = mp.BlockFunctionSpace([fn.FunctionSpace(mesh, 'CG', 2)],
+            aux_space = mp.BlockFunctionSpace([fn.FunctionSpace(mesh, 'CG', function_space_degree)],
                                               restrict=[restriction])
         elif kwargs['space_type'] == 'vectorial':
-            aux_space = mp.BlockFunctionSpace([fn.VectorFunctionSpace(mesh, 'CG', 2)],
+            aux_space = mp.BlockFunctionSpace([fn.VectorFunctionSpace(mesh, 'CG', function_space_degree)],
                                               restrict=[restriction])
         else:
             raise TypeError(f"Unknown type of Function Space: {kwargs['space_type']}")

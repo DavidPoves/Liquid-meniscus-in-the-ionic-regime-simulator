@@ -102,6 +102,7 @@ bcs = {y(1): 0, y(r).diff(r).subs(r, 0): 0}
 m = GEKKO()
 timesteps = 200
 m.time = np.linspace(0, 1, timesteps)
+arr = np.linspace(0, 0.75, timesteps)
 
 y = m.Var(np.zeros(timesteps), fixed_initial=False)
 t = m.Param(value=m.time)

@@ -22,16 +22,16 @@ from Solvers.NS_Solver import NavierStokes as NS
 import fenics as fn
 import numpy as np
 import sympy as sym
-import bisect
+import scipy.integrate
 
 from Input_Parameters import Liquid_Properties
 from Tools.PlotPy import PlotPy
 from Tools.PostProcessing import PostProcessing
 from Tools.MeshConverter import msh2xml
 from Tools.GMSH_Interface import GMSHInterface
+from Tools.SurfaceUpdate import SurfaceUpdate, bcs
 
 from MainMenu import run_main_menu
-
 
 
 """
@@ -73,7 +73,7 @@ y_label = r'$\hat{E}$'
 plotpy = PlotPy(latex=True, fontsize=12., figsize=(12., 7.),
                 background_style=background_style,
                 font_properties=font_properties,
-                grid_properties=grid_properties, save_images=False,
+                grid_properties=grid_properties, save_images=True,
                 save_mat=False, extension='jpg')
 
 
@@ -485,7 +485,7 @@ except NameError:  # when independent functions for r and z were defined.
 """
 Note: Get coordinates from the nodes to evaluate the fields.
 """
-Q = fn.FunctionSpace(mesh, 'DG', 0)
+Q = fn.FunctionSpace(Electrostatics.mesh, 'DG', 0)
 ux = fn.project(Stokes.u.sub(0).dx(0), Q)
 uz = fn.project(Stokes.u.sub(1).dx(1), Q)
 counter = 0
@@ -512,14 +512,27 @@ for r_coord, z_coord in zip(r_nodes, z_nodes):
     residual = np.dot(np.dot(diff_tensor, n_k[counter, :]), n_k[counter, :]) - 0.5*del_dot_n[counter]
     residuals = np.append(residuals, residual)
     counter += 1
+
 # Compute tau_s for the next iteration.
 beta = 0.05
 tau_s_next = np.array([])
 for loc in np.arange(0, len(residuals)-1):
     tau_s_next = np.append(tau_s_next, 0.5*del_dot_n[loc] + beta*residuals[loc])
 
-# Use equation 3.72 from Ximo's thesis to get the new positions of the nodes.
-r = sym.symbols('r')
-y = sym.symbols('y', cls=sym.Function)
-diffeq = sym.Eq(r*(1+y(r).diff(r)**2)**(3/2)*tau_s_next - 0.5*(1+y(r).diff(r)**2)*y(r).diff(r) - 0.5*r*y(r).diff(r, r),
-                0)
+# Define the mesh for the solver of the boundary value problem (bvp).
+mesh_bvp = np.linspace(0, 1, tau_s_next.size)
+
+# Define an initial guess.
+"""
+The structure of the initial guess is similar to the one used by the solver, that is:
+y_init = [y0, y'0]
+"""
+init_guess = np.zeros((2, mesh_bvp.size))
+init_guess[0, 0] = 0.5
+init_guess[0, 1] = 0
+
+# Run the solver.
+sol = scipy.integrate.solve_bvp(lambda r, y: SurfaceUpdate(r, y, tau_s_next, mesh_bvp), bcs, mesh_bvp, init_guess)
+r_plot = np.linspace(0, 1, 200)
+y_plot = sol.sol(r_plot)[0]
+PlotPy.lineplot([r_plot, y_plot])
