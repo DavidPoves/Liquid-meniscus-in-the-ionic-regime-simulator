@@ -29,7 +29,7 @@ from Tools.PlotPy import PlotPy
 from Tools.PostProcessing import PostProcessing
 from Tools.MeshConverter import msh2xml
 from Tools.GMSH_Interface import GMSHInterface
-from Tools.SurfaceUpdate import SurfaceUpdate, bcs
+from Tools.BVPInterface import BVPInterface
 
 from MainMenu import run_main_menu
 
@@ -532,7 +532,8 @@ init_guess[0, 0] = 0.5
 init_guess[0, 1] = 0
 
 # Run the solver.
-sol = scipy.integrate.solve_bvp(lambda r, y: SurfaceUpdate(r, y, tau_s_next, mesh_bvp), bcs, mesh_bvp, init_guess)
+sol = scipy.integrate.solve_bvp(lambda r, y: BVPInterface.SurfaceUpdate(r, y, tau_s_next, mesh_bvp), bcs, mesh_bvp,
+                                init_guess)
 r_plot = np.linspace(0, 1, 200)
 y_plot = sol.sol(r_plot)[0]
 PlotPy.lineplot([r_plot, y_plot])

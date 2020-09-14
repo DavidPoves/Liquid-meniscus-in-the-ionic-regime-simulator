@@ -107,7 +107,7 @@ class Poisson(object):
         Returns
         -------
         bool
-            Returns True if the input is a FEniCS expr. and False otherwise.
+            Returns True if the input is a FEniCS ode. and False otherwise.
 
         """
         return isinstance(inp, df.function.expression.UserExpression)

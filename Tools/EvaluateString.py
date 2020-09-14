@@ -35,10 +35,10 @@ class NumericStringParser(object):
         multop  :: '*' | '/'
         addop   :: '+' | '-'
         integer :: ['+' | '-'] '0'..'9'+
-        atom    :: PI | E | real | fn '(' expr ')' | '(' expr ')'
+        atom    :: PI | E | real | fn '(' ode ')' | '(' ode ')'
         factor  :: atom [ expop factor ]*
         term    :: factor [ multop factor ]*
-        expr    :: term [ addop term ]*
+        ode    :: term [ addop term ]*
         """
         point = Literal(".")
         e = CaselessLiteral("E")
@@ -73,7 +73,7 @@ class NumericStringParser(object):
             ZeroOrMore((addop + term).setParseAction(self.pushFirst))
         # addop_term = ( addop + term ).setParseAction( self.pushFirst )
         # general_term = term + ZeroOrMore( addop_term ) | OneOrMore( addop_term)
-        # expr <<  general_term
+        # ode <<  general_term
         self.bnf = expr
         # map operator symbols to corresponding arithmetic operations
         epsilon = 1e-12
