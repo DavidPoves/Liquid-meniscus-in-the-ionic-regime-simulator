@@ -26,6 +26,8 @@ class BVPInterface(object):
 		self.initial_guess = np.array([])
 		self.sympy_system = np.array([])  # Variable storing the system (in sympy language) if defined by the user.
 		self.functions_dict = dict()  # Dictionary containing the variables defined by the user.
+		self.arrays = dict()  # Dictionary containing variables that are array-like.
+		self.dummy_vars_iso = tuple()  # Tuple containing isolated dummy variables, to avoid user-defined variables.
 
 	def get_Derivatives(self, arg):
 		"""
@@ -141,10 +143,14 @@ class BVPInterface(object):
 						local_dict['x'] = self.x
 					else:
 						if str(symbol) in vars_dict.keys():
-							expr = expr.subs({str(symbol): vars_dict[str(symbol)]})
+							variable = vars_dict[str(symbol)]
+							if isinstance(variable, int) or isinstance(variable, float):
+								expr = expr.subs({str(symbol): vars_dict[str(symbol)]})
 							local_dict[key] = expr
 						else:
 							raise ValueError(f'{str(symbol)} has not been defined in the variables dictionary.')
+			elif isinstance(value, np.ndarray) or isinstance(value, list):
+				self.arrays[key] = value
 			else:
 				local_dict[key] = value
 
@@ -165,18 +171,23 @@ class BVPInterface(object):
 			self.sympy_system = np.append(self.sympy_system, ode_temp)
 		if 'x' in str(ode_temp):
 			self.dummy_vars = tuple([self.x]) + self.dummy_vars
+		self.dummy_vars_iso = self.dummy_vars
 		self.functions_dict['x'] = self.x
 
 	def create_system(self, x, y):
 		"""
-		Create a system of first order equations to be solvable by the scipy solver. To do so, the sympy function
-		lambdify function will be used to translate from sympy to numpy.
+		Create a system with the required structure to be solvable by the scipy solver. To do so, the sympy lambdify
+		function is used.
+		Args:
+			x: Array like. Node points vector. Input introduced by the solver.
+			y: Array like. Solution vector. Introduced by the solver.
+
 		Returns:
 
 		"""
 		temp_dict = dict()
 		counter = 0
-		for var in self.dummy_vars[:-1]:
+		for var in self.dummy_vars_iso[:-1]:
 			if self.x == var:
 				temp_dict[str(var)] = x
 			else:
@@ -191,11 +202,28 @@ class BVPInterface(object):
 			self.system = np.vstack(self.system)
 			return self.system
 		else:  # If the user input was a system.
-			temp_dict[str(self.dummy_vars[-1])] = y[counter]
+			temp_dict[str(self.dummy_vars_iso[-1])] = y[counter]
+
+			if len(list(self.arrays.keys())) > 0:  # Arrays have been loaded.
+				for key, value in self.arrays.items():
+					temp_dict[key] = value
+					# We need to append to the self.dummy_vars tuple, following this procedure.
+					lst_temp = list(self.dummy_vars)
+					lst_temp.append(sp.Symbol(key))
+					self.dummy_vars = tuple(lst_temp)
+
+					# Check possible size issues with the introduced array.
+					if len(value) != x.size:
+						temp_dict[key] = np.interp(x, self.mesh, value.astype('float'))
+
+			# Make the dummy vars tuple unique.
+			self.dummy_vars = tuple(sorted(set(self.dummy_vars), key=self.dummy_vars.index))
+
 			self.system = np.zeros((self.sympy_system.size, x.size))
 			counter = 0
 			for eq in self.sympy_system:
-				lambd = sp.lambdify(self.dummy_vars, eq)(*tuple(list(temp_dict.values())))
+				vals = tuple(list(temp_dict.values()))
+				lambd = sp.lambdify(self.dummy_vars, eq)(*vals)
 				self.system[counter] = lambd
 				counter += 1
 			self.system = np.vstack(self.system)
@@ -225,6 +253,7 @@ class BVPInterface(object):
 		# Check if the independent term x is in the temporary ODE.
 		if 'x' in str(ode_temp):
 			self.dummy_vars = tuple([self.x]) + self.dummy_vars
+		self.dummy_vars_iso = self.dummy_vars
 
 		# Isolate the dummy variable with the highest derivative order.
 		self.isolated_ode = sp.solve(ode_temp, self.dummy_vars[-1])[0]
@@ -497,7 +526,7 @@ if __name__ == '__main__':
 
 	# Define the system with the corresponding functions.
 	funs = ['y']
-	syst = ['y.diff(x, 1)', '2*(1+y.diff(x, 1)**2)**(3/2)*tau - (1/(x+1e-20))*(1+y.diff(x, 1)**2)*y1']
+	syst = ['y.diff(x, 1)', '2*tau*(1+y.diff(x, 1)**2)**(3/2) - (1/(x+1e-20))*(1+y.diff(x, 1)**2)*y.diff(x, 1)']
 	bvp_int.define_system(syst, functions=funs, vars_dict={'tau': tau})
 
 	# Load the boundary conditions.

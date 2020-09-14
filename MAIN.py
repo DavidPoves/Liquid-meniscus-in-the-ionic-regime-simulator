@@ -519,10 +519,23 @@ tau_s_next = np.array([])
 for loc in np.arange(0, len(residuals)-1):
     tau_s_next = np.append(tau_s_next, 0.5*del_dot_n[loc] + beta*residuals[loc])
 
+# Initialize the solver object.
+solver = BVPInterface()
+
+# Define the system to be solved.
+funs = ['y']
+syst = ['y.diff(x, 1)', '2*tau*(1+y.diff(x, 1)**2)**(3/2) - (1/(x+1e-20))*(1+y.diff(x, 1)**2)*y.diff(x, 1)']
+solver.define_system(system=syst, functions=funs, vars_dict={'tau': tau_s_next})
+
 # Define the mesh for the solver of the boundary value problem (bvp).
 mesh_bvp = np.linspace(0, 1, tau_s_next.size)
+solver.load_mesh(mesh_bvp)
 
-# Define an initial guess.
+# Define the boundary conditions and load them into the solver.
+bcs = {'a': {'y.diff(x, 1)': 0}, 'b': {'y': 0}}
+solver.load_bcs(bcs)
+
+# Define an initial guess and load it into the solver.
 """
 The structure of the initial guess is similar to the one used by the solver, that is:
 y_init = [y0, y'0]
@@ -530,10 +543,13 @@ y_init = [y0, y'0]
 init_guess = np.zeros((2, mesh_bvp.size))
 init_guess[0, 0] = 0.5
 init_guess[0, 1] = 0
+solver.load_initial_guess(init_guess)
 
 # Run the solver.
-sol = scipy.integrate.solve_bvp(lambda r, y: BVPInterface.SurfaceUpdate(r, y, tau_s_next, mesh_bvp), bcs, mesh_bvp,
-                                init_guess)
+sol = solver.solve()
 r_plot = np.linspace(0, 1, 200)
 y_plot = sol.sol(r_plot)[0]
-PlotPy.lineplot([r_plot, y_plot])
+plotpy.lineplot([(r_plot, y_plot, 'First iteration'), (r_nodes, z_nodes, 'Initial shape')],
+                xlabel=x_label, y_label=r'$\hat{z}$',
+                fig_title='Evolution of the meniscus surface after first iteration.',
+                legend_title='Surfaces')
