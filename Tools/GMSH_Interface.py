@@ -17,6 +17,8 @@ class GMSHInterface(object):
         self.filename = '' # Initialize the name of the .geo file.
         self.refinement = ''  # This string will be later modified by the user to indicate the refinement of mesh.
         self.msh_filename = ''
+        self.geo_filename = ''
+        self.mesh_filename = ''
 
         # Define the geometry and mesh object, as well as some of its properties.
         self.my_mesh = Mesh()
@@ -185,26 +187,35 @@ class GMSHInterface(object):
         parameter character is contained within one of the built in functions, it will be replaced by the corresponding
         value, which is not desired.
         Args:
-            string:
-            replace_by:
+            string: the expression to be parsed.
+            replace_by: expression by which built-in functions will be replaced.
 
         Returns:
-
+            Expression without built-in functions.
         """
-        string = string.replace('s i n', replace_by)
-        string = string.replace('t a n', replace_by)
-        string = string.replace('c o s', replace_by)
-        string = string.replace('e x p', replace_by)
-        string = string.replace('a b s', replace_by)
-        string = string.replace('t r u n c', replace_by)
-        string = string.replace('r o u n d', replace_by)
-        string = string.replace('s g n', replace_by)
-        string = string.replace('P I', replace_by)
-        string = string.replace('E', replace_by)
+
+        # Define the built-in functions (this should be updated if any other function is added to the parser).
+        """ Built-in functions must be defined with blank spaces between letters in case there are words, like sin, cos,
+        exp, etc.
+        """
+        funs = ['s i n', 't a n', 'c o s', 'e x p', 'a b s', 't r u n c', 'r o u n d', 's g n', 'P I', 'E']
+
+        for fun in funs:
+            string = string.replace(fun, replace_by)
+
         return string
 
     @staticmethod
     def get_independent_var_from_equation(string):
+        """
+        Get the independent parameter of an equation, provided that it has only dependence on a single parameter. To do
+        so, a regexp pattern will be used to detect letters within the expression.
+        Args:
+            string: expression containing a single independent parameter.
+
+        Returns:
+
+        """
         ind_var = ' '.join(re.split("[^a-zA-Z]*", string)).strip()
 
         # Avoid false positives of the accepted functions from the parser.
@@ -224,7 +235,16 @@ class GMSHInterface(object):
 
     @staticmethod
     def replace_ind_var(string, ind_var, value):
-        string_original = string
+        """
+        Replace the independent parameter by an input value, to be later evaluated by a parser.
+        Args:
+            string: Expression containing the independent parameter.
+            ind_var: string. The independent parameter.
+            value: int or float. The value by which the independent parameter will be replaced.
+
+        Returns:
+            String containing the introduced value instead of the independent parameter.
+        """
         # Define a dictionary to replace given functions by an unique non-alphanumeric character.
         avail_chars = ['!', '@', '#', '$', '%', '&', '?', '¿', '¡', 'ç']
         replacements = {}
@@ -245,7 +265,7 @@ class GMSHInterface(object):
         # Now, we can safely replace the independent variable.
         string = string.replace(ind_var, value)
 
-        # Again, replace the built in functions.
+        # Put the built in functions into place (they were previously replaced).
         for match in matches:
             string = string.replace(replacements[match], match)
 
@@ -253,6 +273,14 @@ class GMSHInterface(object):
 
     @staticmethod
     def angle_handler(string):
+        """
+        If called, degrees will be replaced by radians, since the numerical parser works with radians.
+        Args:
+            string: Expression where the degrees are present.
+
+        Returns:
+            string with the degrees replaced by radians.
+        """
         nsp_local = NumericStringParser()
         trig_functions = ['sin', 'cos', 'tan']
 
@@ -276,33 +304,60 @@ class GMSHInterface(object):
 
     @staticmethod
     def extract_points_from_geo(filepath):
+        """
+        Extract all the points of a given .geo file. It can also extract curves ids and the points that make each of the
+        curves. This is possible by the use of regexp patterns.
+        Args:
+            filepath: string. Path of the .geo file (with the extension).
+
+        Returns:
+            points_data: Dictionary whose keys are the points' ids and its values are their coordinates.
+            curves_data: Dictionary whose keys are the curves' ids and its values are the points' ids which conform the
+            curve.
+        """
         # Create a dictionary with the id of the point as the key and the coordinates as the value.
         points_data = dict()
         curves_data = dict()
+
+        # Define regexp patterns.
         pattern_br = r"\{(.*?)\}"  # Catch everything between curly braces.
-        pattern_pa = r"\(([^\)]+)\)"
-        with open(filepath, 'r') as f:  # Open the file with read permissions only.
+        pattern_pa = r"\(([^\)]+)\)"  # Catch everything between parenthesis.
+
+        # Read the file.
+        with open(filepath, 'r') as f:  # Open the file with read permissions ONLY.
             for line in f:
                 if re.match('Point', line):  # Points have to be read
                     point = []
-                    content_re_br = re.findall(pattern_br, line)  # Get content between curly braces of the line.
-                    content_re_pa = re.findall(pattern_pa, line)
-                    for str_point in content_re_br[0].strip().split(',')[:-1]:
-                        point.append(str_2_num(str_point))
-                    point = np.array(point)  # Transform Pyhton array to Numpy array.
+                    content_re_br = re.findall(pattern_br, line)  # Get the coordinates of the point.
+                    content_re_pa = re.findall(pattern_pa, line)  # Get the point id.
+                    for str_point in content_re_br[0].strip().split(',')[:-1]:  # Iterate through the coords of point.
+                        point.append(str_2_num(str_point))  # Append each of the coords of point.
+                    point = np.array(point)  # Transform Python array to Numpy array.
                     points_data[content_re_pa[0]] = point
                 elif re.match(r"Curve\(([^\)]+)\)", line):  # Curves have to be read.
                     curve_id = re.findall(pattern_pa, line)[0]
                     curves = re.findall(pattern_br, line)[0].strip()
                     curves_data[curve_id] = curves
-        f.close()
+        f.close()  # Close the file to avoid undesired modifications.
 
         return points_data, curves_data
 
     @staticmethod
     def get_boundaries_ids(filepath):
+        """
+        Get the ids of each of the boundaries of the loaded geometry, as defined in GMSH.
+        Args:
+            filepath: Path of the .geo file (with the extension).
+
+        Returns:
+            boundaries_ids: Dictionary whose keys are the names of the boundaries, as defined in GMSH; and their
+            corresponding values are the ids of the boundaries. This id is unique for each curve.
+            physical_curves: Dictionary whose keys are the names of the boundaries, as defined in GMSH; and their
+            values are the curves that conform a physical curve.
+        """
+        # Define the necessary regexp patterns.
         parentheses_pattern = r"\(([^\)]+)\)"  # Get everything between parentheses.
-        quotes_pattern = r'"([A-Za-z0-9_\./\\-]*)"'
+        quotes_pattern = r'"([A-Za-z0-9_\./\\-]*)"'  # Get everything between double quotes.
         pattern_br = r"\{(.*?)\}"  # Catch everything between curly braces.
 
         # Preallocate the storage objects.
@@ -331,6 +386,15 @@ class GMSHInterface(object):
 
     @staticmethod
     def get_subdomains_ids(filepath):
+        """
+        Get the ids of each of the subdomains defined in GMSH. To do so, regexp patterns are used.
+        Args:
+            filepath: Path of the .geo file (with the extension).
+
+        Returns:
+            Dictionary whose keys are the subdomain names and their corresponding values are the ids of each of these
+            subdomains.
+        """
         parentheses_pattern = r"\(([^\)]+)\)"  # Get everything between parentheses.
         quotes_pattern = r'"([A-Za-z0-9_\./\\-]*)"'
 
@@ -356,15 +420,37 @@ class GMSHInterface(object):
         return subdomains_ids
 
     def geometry_generator(self, interface_fun=None, interface_fun_r=None, interface_fun_z=None, factor=10, **kwargs):
+        """
+        Generate the geometry given some parameters.
+        Args:
+            interface_fun: string. Expression containing the equation y(x) for the interface. In this case, there is an
+            unique expression for the interface shape. This expression will be used when none of the other options are
+            used (interface_fun_r and interface_fun_z must be None). Otherwise, an error will rise.
+            interface_fun_r: Expression containing the equation r(s) which will create the radial coordinates of the
+            interface. It should only depend on a single parameter.
+            interface_fun_z: Expression containing the equation z(s) which will create the z coordinates of the
+            interface. It should only depend on a single parameter.
+            factor: Ratio between the top wall z coordinate and bottom wall coord. Optional, default is 10.
+            **kwargs:
 
-        # Do some checks before proceeding.
+        Returns:
+
+        """
+
+        # Define default values for the kwargs.
         kwargs.setdefault('filename', 'GeneratedGeometry')
         kwargs.setdefault('number_points', 300)
         kwargs.setdefault('angle_unit', 'radians')
+
+        # Do some checks before proceeding.
         if interface_fun is not None and kwargs.get('r') is None:
             print('** WARNING: No array for the r coordinates was given. Assuming equidistant points based on number of points selected.', flush=True)
             kwargs.setdefault('r', np.linspace(0, 1, kwargs.get('number_points')))
         elif interface_fun is not None and interface_fun_r is not None and interface_fun_z is not None:
+            raise NotImplementedError('Incompatible functions were introduced.')
+        elif interface_fun is not None and interface_fun_r is not None and interface_fun_z is None:
+            raise NotImplementedError('Incompatible functions were introduced.')
+        elif interface_fun is not None and interface_fun_r is None and interface_fun_z is not None:
             raise NotImplementedError('Incompatible functions were introduced.')
 
         if interface_fun_r is not None and interface_fun_z is not None and kwargs.get('independent_param') is None:
@@ -534,6 +620,12 @@ class GMSHInterface(object):
         self.liquid.addEntity(liquid_surf)
 
     def mesh_generation(self):
+        """
+        Generate the mesh file from the .geo file by calling a Graphical User Interface (GUI), in which the user is
+        able to define some other parameters of the mesh.
+        Returns:
+            The path of the mesh file.
+        """
 
         # Initialize the GUI to get user's inputs.
         app = run_app(self.my_mesh)
