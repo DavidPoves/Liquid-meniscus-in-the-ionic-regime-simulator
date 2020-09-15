@@ -55,6 +55,15 @@ class BVPInterface(object):
 			pass
 
 	def substitute_derivatives(self, expr):
+		"""
+		Substitute Sympy derivative terms with symbols. These symbols will be like: 'yn', where n will indicate the
+		derivative degree, starting from 0.
+		Args:
+			expr: Sympy expression containing the derivative terms.
+
+		Returns:
+			Expression where the derivatives have been replaced by their corresponding symbols.
+		"""
 		# Get the terms with derivatives.
 		self.derivative_terms = list()
 		self.get_Derivatives(arg=expr)
@@ -74,6 +83,15 @@ class BVPInterface(object):
 		return ode_temp
 
 	def substitute_functions(self, expr):
+		"""
+		Substitute the functions of a given expression by a dummy symbol. These symbols will be like: 'yn', where n will
+		be the function number, starting from 1.
+		Args:
+			expr: Sympy expression containing the functions to be substituted.
+
+		Returns:
+			Expression where the functions have been replaced by the dummy symbols.
+		"""
 		# Create dummy variables for the functions to be substituted.
 		n_funs = len(list(self.functions_dict.values()))
 		self.dummy_vars = sp.symbols(f'y1:{n_funs+1}')
@@ -89,6 +107,15 @@ class BVPInterface(object):
 
 	@staticmethod
 	def get_ode_order(ode, fun):
+		"""
+		Get the order of a Ordinary Differential Equation (ODE) with respect to a specific function.
+		Args:
+			ode: Sympy expression of the ODE.
+			fun: Function with respect to which the ode order will be computed.
+
+		Returns:
+			Integer of the ODE order.
+		"""
 		return sp.ode_order(ode, func=fun)
 
 	def define_ode(self, ode):
@@ -121,6 +148,28 @@ class BVPInterface(object):
 		self.yb = np.zeros((1, self.ode_order))[0]
 
 	def define_system(self, system, functions, vars_dict=None):
+		"""
+		Given a system, transform it into a Sympy expression. This will be done by knowing the functions to be solved
+		by the system, and any other possible variable/expression which may be present in the expression. The latter
+		will be introduced in vars_dict, which has the following structure:
+			Given a system of the form:
+				system = ['-q', '-q/2'], where q = (T1 - T2)*U,
+				vars_dict = {'U': U, 'q': (T1-T2)*U}, where U should be a number.
+			For this case, the functions variable should have the following structure:
+				functions = ('T1', 'T2')
+		Take into account that when defining expressions (like in the previous example), if it has another variable
+		(for the previous example, U), it must be defined before the expression. Otherwise, it may not be substituted
+		in the Sympy expression.
+		Args:
+			system: Array like. Array containing the system definition. Each of the elements of the array must be a
+			string with the equation definition. This equation must be equal to 0.
+			functions: Tuple containing the functions to be solved by the system.
+			vars_dict: Dictionary whose keys are the variables introduced in the system and their values should be their
+			corresponding values.
+
+		Returns:
+			Array of the Sympy system.
+		"""
 		if vars_dict is None:
 			vars_dict = dict()
 
@@ -183,7 +232,7 @@ class BVPInterface(object):
 			y: Array like. Solution vector. Introduced by the solver.
 
 		Returns:
-
+			Ready to be solved system.
 		"""
 		temp_dict = dict()
 		counter = 0
@@ -257,27 +306,6 @@ class BVPInterface(object):
 
 		# Isolate the dummy variable with the highest derivative order.
 		self.isolated_ode = sp.solve(ode_temp, self.dummy_vars[-1])[0]
-
-	@staticmethod
-	def SurfaceUpdate(r, y, residuals, mesh):
-		"""Definition of the system to be solved to obtain the desired surface update, depending on the residuals computed
-		from previous calculations. For this case, we define r to be the independent parameter, and y to be y(r), so that
-		y_vect = [y, y']. Thus, y is referenced as y[0] and y' is referenced by y[1]. What this function returns is the
-		derivative of the y_vect variable previously mentioned, that is: dydt = [y', y'']. Therefore, to define the system,
-		one should previously isolate y'' from the original ODE.
-		Args:
-			r: Array-like. The independent parameter. This term will be used by the scipy solver, and the length of this
-			array will determine the number of nodes the solver will use.
-			y: Array-like. The dependent parameter.
-			residuals: Array-like. The residuals obtained from the electrostatics and hydraulic calculations.
-
-		Returns:
-			Numpy array containing the derivative of the y_vect. Here the system of 1st order ODEs with the appropriate
-			shape to be used by the solver is returned as a numpy array.
-
-		"""
-		residuals_int = np.interp(r, mesh, residuals.astype('float'))
-		return np.vstack([y[1], 2*(1+y[1]**2)**(3/2)*residuals_int - (1/(r+1e-20))*(1+y[1]**2)*y[1]])
 
 	def load_mesh(self, mesh):
 		"""
@@ -353,20 +381,15 @@ class BVPInterface(object):
 
 	def solve(self, **kwargs):
 		"""
-
+		Solve a Boundary Value Problem (BVP) using the scipy.integrate.solve_bvp function. A system should be previously
+		defined using other methods of this class. See examples to see how can a system may be defined.
 		Args:
-			mesh: Array like. The initial mesh of points defining the domain where the BVP will be solved.
-			initial_guess: Array like. Initial guess for the BVP. This may define following these steps.
-				- Initialize the array with the following piece of code:
-										init_guess = np.zeros((n, mesh.size)), where
-				n is the ODE order and the command mesh.size may be substituted by length(mesh) in case the mesh is not
-				defined using numpy arrays.
-				-
 			**kwargs: All the keywords accepted by the scipy.integrate.solve_bvp function. See
 			https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_bvp.html for more info.
 
 		Returns:
-
+			Scipy solution object. For more information refer to:
+			https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_bvp.html
 		"""
 		# Transform the given ODE into a 1st order ODE.
 		if self.sympy_system.size == 0:
@@ -391,7 +414,7 @@ class BVPInterface(object):
 			yb: y_vect at the end of the domain.
 
 		Returns:
-
+			Array containing the boundary conditions.
 		"""
 		self.ya = ya
 		self.yb = yb
@@ -403,6 +426,13 @@ class BVPInterface(object):
 if __name__ == '__main__':
 
 	# %% EXAMPLE 1.
+	""" For this example, we will solve the Surface Update problem (Methodology 1) from Ximo Gallud's thesis:
+	'A comprehensive numerical procedure for solving the Taylor-Melcher leaky dielectric model with
+	charge evaporation'. To do so, we may directly define the ODE. The BVPInterface will take care of transforming this
+	ODE into a Scipy-ready system, which may be solved using its own solver. To solve, we will be using the following
+	boundary conditions:
+	y'(0) = 0, y(1) = 0
+	"""
 	bvp_int = BVPInterface()
 	# Define the ODE expression following the guidelines from the documentation.
 	bvp_int.define_ode('x*(1+y.diff(x, 1)**2)**(3/2) - 0.5*(1+y.diff(x, 1)**2)*y.diff(x, 1) - 0.5*x*y.diff(x, 2)')
@@ -422,12 +452,17 @@ if __name__ == '__main__':
 
 	# Solve.
 	sol = bvp_int.solve()
+
+	# Plot the solution.
 	r_plot = np.linspace(0, 1, 200)
 	y_plot = sol.sol(r_plot)[0]
 	plt.figure()
 	plt.plot(r_plot, y_plot)
 
 	# %% EXAMPLE 2: Solving Bratu's problem.
+	""" Solve Bratu's problem as defined in the Scipy docs:
+	https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_bvp.html
+	"""
 	bvp_int = BVPInterface()
 	# Define the ODE following the guidelines.
 	bvp_int.define_ode('y.diff(x, 2) + exp(y)')
@@ -463,7 +498,8 @@ if __name__ == '__main__':
 	plt.show()
 
 	# %% EXAMPLE 3: Solving an already defined system.
-	# Solving the example problem from: https://pythonhosted.org/scikits.bvp_solver/tutorial.html
+	"""Solving the example problem from: https://pythonhosted.org/scikits.bvp_solver/tutorial.html
+	"""
 	bvp_int = BVPInterface()
 
 	# Define some problem constants.
@@ -479,6 +515,8 @@ if __name__ == '__main__':
 	bvp_int.load_bcs({'a': {'1': T10}, 'b': {'2': T2Ahx}})
 	bvp_int.load_mesh(np.linspace(0, Ahx, 200))
 	sol = bvp_int.solve()
+
+	# Plot the solutions.
 	r_plot = np.linspace(0, 5, 200)
 	y_plot_1 = sol.sol(r_plot)[0]
 	y_plot_2 = sol.sol(r_plot)[1]
@@ -488,7 +526,9 @@ if __name__ == '__main__':
 	plt.legend()
 	plt.show()
 
-	# %% EXAMPLE 4: Re-do example 1 but with a system definition.
+	# %% EXAMPLE 4.
+	""" Solve the same problem as in example 1, but this time we define the system instead of the ODE.
+	"""
 	bvp_int = BVPInterface()
 
 	# Define the system. Define the following functions: y1 = y', y2 = y''
@@ -518,7 +558,9 @@ if __name__ == '__main__':
 	plt.figure()
 	plt.plot(r_plot, y_plot)
 
-	# %% EXAMPLE 5: Re-do example 1 with numpy array component.
+	# %% EXAMPLE 5.
+	""" Same as in Example 4, but introducing a numpy variable.
+	"""
 	bvp_int = BVPInterface()
 
 	# Define the numpy array.
