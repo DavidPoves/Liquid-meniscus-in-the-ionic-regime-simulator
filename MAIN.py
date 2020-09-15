@@ -17,7 +17,7 @@
 import os
 
 from Solvers.Poisson_solver import Poisson
-from Solvers.NS_Solver import NavierStokes as NS
+from Solvers.NS_Solver import Stokes
 
 import fenics as fn
 import numpy as np
@@ -360,19 +360,19 @@ inputs_fluids = {'Weber number': We,
                  'Vacuum normal component': Electrostatics.E_v_n}
 
 # Initialize the Stokes class and solve.
-Stokes = NS(inputs_fluids, boundary_conditions_fluids, subdomains=subdomains, boundaries=boundaries, mesh=mesh,
-            boundaries_ids=boundaries_ids, restrictions_path=restrictions_folder_path, mesh_path=mesh_folder_path,
-            filename=filename)
+Stokes = Stokes(inputs_fluids, boundary_conditions_fluids, subdomains=subdomains, boundaries=boundaries, mesh=mesh,
+                boundaries_ids=boundaries_ids, restrictions_path=restrictions_folder_path, mesh_path=mesh_folder_path,
+                filename=filename)
 Stokes.solve()
 
 # Obtain useful information from the solution.
 p = Stokes.p_star - P_r_h + I_h*C_R
-theta_fun = NS.block_project(Stokes.theta, mesh, Electrostatics.restrictions_dict['interface_rtc'], boundaries,
-                             boundaries_ids['Interface'], space_type='scalar', boundary_type='internal')
+theta_fun = Stokes.block_project(Stokes.theta, mesh, Electrostatics.restrictions_dict['interface_rtc'], boundaries,
+                                 boundaries_ids['Interface'], space_type='scalar', boundary_type='internal')
 theta_fun_arr = PostProcessing.extract_from_function(theta_fun, coords_mids)
 
 # %% RETRIEVE ALL THE IMPORTANT INFORMATION.
-u_r, u_z = NS.extract_velocity_components(Stokes.u, coords_nodes)
+u_r, u_z = Stokes.extract_velocity_components(Stokes.u, coords_nodes)
 p_arr = PostProcessing.extract_from_function(p, coords_nodes)
 j_conv_arr = PostProcessing.extract_from_function(Stokes.j_conv, coords_nodes)
 
@@ -387,7 +387,7 @@ plotpy.lineplot([(r_nodes, p_arr)],
                 fig_title='Pressure along the meniscus')
 
 # Check the normal component of the velocity and the evaporated charge.
-check = NS.check_evaporation_condition(Stokes.u_n, j_ev, coords_mids)
+check = Stokes.check_evaporation_condition(Stokes.u_n, j_ev, coords_mids)
 u_n_array = PostProcessing.extract_from_function(Stokes.u_n, coords_mids)
 u_t_array = PostProcessing.extract_from_function(Stokes.u_t, coords_mids)
 plotpy.lineplot([(r_mids, check)],
@@ -414,8 +414,9 @@ plotpy.lineplot([(r_mids, theta_fun_arr)],
 n = fn.FacetNormal(mesh)
 special = (fn.Identity(mesh.topology().dim()) - fn.outer(n, n))*fn.grad(Stokes.sigma)
 j_conv = fn.dot(Electrostatics.sigma*n, fn.dot(fn.grad(Stokes.u), n)) - fn.dot(Stokes.u, special)
-j_conv = NS.block_project(j_conv, mesh, Electrostatics.restrictions_dict['interface_rtc'], Stokes.boundaries,
-                          Stokes.boundaries_ids['Interface'], space_type='scalar', boundary_type='internal', sign='-')
+j_conv = Stokes.block_project(j_conv, mesh, Electrostatics.restrictions_dict['interface_rtc'], Stokes.boundaries,
+                              Stokes.boundaries_ids['Interface'], space_type='scalar', boundary_type='internal',
+                              sign='-')
 j_conv_arr = PostProcessing.extract_from_function(j_conv, coords_mids)
 
 plotpy.lineplot([(r_mids, j_conv_arr)],

@@ -16,7 +16,7 @@ from Tools.GMSH_Interface import GMSHInterface
 df.parameters["ghost_mode"] = "shared_facet"  # required by dS
 
 
-class NavierStokes(object):
+class Stokes(object):
     def __init__(self, inputs, boundary_conditions, **kwargs):
 
         # Unpack the inputs.
@@ -287,21 +287,21 @@ class NavierStokes(object):
 
         # Compute normal and tangential velocity components.
         u_n = fn.dot(u, n)
-        self.u_n = NavierStokes.block_project(u_n, self.mesh, self.restrictions_dict['interface_rtc'], self.boundaries,
-                                              self.boundaries_ids['Interface'], space_type='scalar',
-                                              boundary_type='internal', sign='-')
+        self.u_n = Stokes.block_project(u_n, self.mesh, self.restrictions_dict['interface_rtc'], self.boundaries,
+                                        self.boundaries_ids['Interface'], space_type='scalar',
+                                        boundary_type='internal', sign='-')
 
         u_t = fn.dot(u, tan_vector)
-        self.u_t = NavierStokes.block_project(u_t, self.mesh, self.restrictions_dict['interface_rtc'], self.boundaries,
-                                              self.boundaries_ids['Interface'], space_type='scalar',
-                                              boundary_type='internal', sign='+')
+        self.u_t = Stokes.block_project(u_t, self.mesh, self.restrictions_dict['interface_rtc'], self.boundaries,
+                                        self.boundaries_ids['Interface'], space_type='scalar',
+                                        boundary_type='internal', sign='+')
 
         # Compute the convection charge transport.
         special = (fn.Identity(self.mesh.topology().dim()) - fn.outer(n, n))*fn.grad(self.sigma)
         self.j_conv = self.sigma*fn.dot(n, fn.dot(fn.grad(u), n)) - fn.dot(u, special)
-        self.j_conv = NavierStokes.block_project(self.j_conv, self.mesh, self.restrictions_dict['interface_rtc'],
-                                                 self.boundaries, self.boundaries_ids['Interface'], space_type='scalar',
-                                                 boundary_type='internal', sign='-')
+        self.j_conv = Stokes.block_project(self.j_conv, self.mesh, self.restrictions_dict['interface_rtc'],
+                                           self.boundaries, self.boundaries_ids['Interface'], space_type='scalar',
+                                           boundary_type='internal', sign='-')
 
     @staticmethod
     def block_project(u, mesh, restriction, subdomain_data, project_id,
