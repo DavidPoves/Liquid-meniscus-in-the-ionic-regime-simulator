@@ -78,6 +78,15 @@ class PlotPy(object):
             os.environ['PATH'] = os.environ['PATH'] + ':/Library/TeX/texbin'
             plt.rc('text', usetex=self.use_latex)
 
+        # Define other variables.
+        self.x_ = list()
+        self.y_ = list()
+        self.labels_raw_ = list()
+        self.labels_ = list()
+        self.legend = False
+        self.xlabel_ = ''
+        self.ylabel_ = ''
+
     def apply_kwargs(self, **kwargs):
         """
         Change a specific parameter without re-initializing the whole plotting
@@ -192,6 +201,18 @@ class PlotPy(object):
         return pd.DataFrame(d)
 
     def save_mat_file(self, x, y, **kwargs):
+        """
+        Save data as a .mat file, which can be opened Matlab. This file will be saved in the folder which may be
+        introduced to the class when initializing the class under the kwarg mat_folder. Otherwise, it will be saved in
+        a default folder, called MAT_FILES.
+        Args:
+            x: x-data array.
+            y: y-data array.
+            **kwargs: The accepted kwarg is fig_title, which will name the file. It must be a string.
+
+        Returns:
+
+        """
         mat_file_name = ''
         for word in kwargs.get('fig_title').split(' '):
             if word != kwargs.get('fig_title').split(' ')[-1]:
@@ -212,6 +233,37 @@ class PlotPy(object):
             shutil.move(os.path.join(os.getcwd(), f), self.mat_folder)
 
     def lineplot(self, data, **kwargs):
+        """
+        Create a lineplot for given data. To introduce data, one may use arrays, in which tuples will be introduced.
+        These tuples will contain the x data, y data and a string with the label of the plot, if necessary. Notice that
+        this last element is optional. In case a label is detected, a legend will be automatically displayed on the
+        graph. A simple example could be (once the PlotPy class is initialized):
+            PlotPy.lineplot([(x_data, y_data)]), when only a plot is necessary.
+            PlotPy.lineplot([(x_data_1, y_data_1, label_1), (x_data_2, y_data_2, label_2)]), when several plots on the
+            same figure are necessary.
+        Other options are explained on the kwargs section of Args.
+        Args:
+            data: Array containing tuples with the corresponding x and y data and their label for the legend. This last
+            element is optional.
+            **kwargs: Available kwargs are:
+                        - xlabel: String containing the label of the x axis. It should be a raw string in case latex
+                        commands are used.
+                        - ylabel: Same as xlabel, but for the y axis.
+                        - fig_title: String containing the title of the figure. Use raw strings in case latex commands
+                        are used.
+                        - legend_title: String of the title of the legend of the figure. Use raw strings if latex
+                        commands are used.
+                        - grid: Boolean indicating if a grid on the figure is to be drawn.
+                        - xscale: String containing the scale of the x axis. Available options are the ones availale for
+                        Matplotlib.
+                        - yscale: Same as xscale, but for the y axis.
+
+
+        Returns:
+
+        """
+
+        # Assign default values to the kwargs.
         kwargs.setdefault('xlabel', 'x')
         kwargs.setdefault('ylabel', 'y')
         kwargs.setdefault('fig_title', '')
@@ -220,13 +272,15 @@ class PlotPy(object):
         kwargs.setdefault('xscale', 'linear')
         kwargs.setdefault('yscale', 'linear')
 
+        # Assign to each of the available font styles their respective latex code.
         avail_styles = {'medium': 'textmd', 'bold': 'textbf',
                         'upright': 'textup', 'italic': 'textit',
                         'slanted': 'textsl', 'small_caps': 'textsc'}
 
+        # Extract the information from the data array.
         self.x_ = [tup[0] for tup in data]
         self.y_ = [tup[1] for tup in data]
-        try:
+        try:  # Try finding a label within the tuple.
             labels_raw = [tup[2] for tup in data]
             self.labels_raw_ = labels_raw
             self.labels_ = labels_raw
@@ -236,7 +290,7 @@ class PlotPy(object):
                     style_code = avail_styles.get(legend_labels_style)
                     self.labels_ = []
                     for label in labels_raw:
-                        label_str = '\\' + style_code + '{' + f"{label}" + '}'
+                        label_str = '\\' + style_code + '{' + f"{label}" + '}'  # Assign to the label the latex command
                         self.labels_.append(label_str)
                 elif legend_labels_style not in avail_styles and self.use_latex:
                     print(f"Unrecognized legend labels style {legend_labels_style}. Using the default one...", flush=True)
@@ -244,8 +298,8 @@ class PlotPy(object):
                 pass
 
             zip_data = zip(self.x_, self.y_, self.labels_)
-            self.legend = True
-        except IndexError:
+            self.legend = True  # Automatically display the legend of the figure if a label is found.
+        except IndexError:  # In case a label is not found, an IndexError will be caught, disabling the legend.
             zip_data = zip(self.x_, self.y_)
             self.legend = False
 
@@ -268,7 +322,7 @@ class PlotPy(object):
             self.i = 0
             for x, y, label in zip_data:
                 plt.plot(x, y, label=label)
-                if self.savemat == True:
+                if self.savemat:
                     self.save_mat_file(x, y, **kwargs)
                     self.i += 1
             if kwargs.get('legend_title') != '':
