@@ -522,7 +522,7 @@ if __name__ == '__main__':
 	bvp_int = BVPInterface()
 
 	# Define the numpy array.
-	tau = np.linspace(0, 1e-1, 200)
+	tau = np.linspace(0, -1, 200)
 
 	# Define the system with the corresponding functions.
 	funs = ['y']

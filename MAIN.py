@@ -21,8 +21,7 @@ from Solvers.NS_Solver import NavierStokes as NS
 
 import fenics as fn
 import numpy as np
-import sympy as sym
-import scipy.integrate
+import sympy as sp
 
 from Input_Parameters import Liquid_Properties
 from Tools.PlotPy import PlotPy
@@ -46,6 +45,7 @@ This project is heavily based on the the thesis by Chase Coffman:
 Electrically-Assisted Evaporation of Charged Fluids: Fundamental Modeling and
 Studies on Ionic Liquids.
 """
+
 # Prepare graphing tool.
 """
 All the available fonts for matplotlib:
@@ -83,7 +83,7 @@ LiquidInps.EMIBF4()  # Load EMIBF4 liquid properties.
 
 T_0 = 298.15  # Reference temperature [K]
 
-# Define values for simulation.
+# Define values for simulation (as used in Ximo's thesis).
 Lambda_list = [1, 12]
 E0_list = [0.99, 0.65]
 B_list = [0.0467, 0.00934]
@@ -105,31 +105,33 @@ code.
 # Call the main menu (main GUI).
 app = run_main_menu()
 
-# Get the name of the mesh file.
+# Get the name of the mesh file and its path.
 filepath = app.msh_filename
 filename = filepath.split('/')[-1]
 
 # Create the folders in which the outputs will be stored.
 mesh_folder_path = '/'.join(filepath.split('/')[:-1])
 
-root_folder = os.getcwd()
-restrictions_folder_name = 'RESTRICTIONS'
+root_folder = os.getcwd()  # Get the working directory (getcwd = Get Current Working Directory).
+restrictions_folder_name = 'RESTRICTIONS'  # Name of the folder where all the defined restrictions will be saved.
 restrictions_folder_path = root_folder + '/' + restrictions_folder_name
 
-checks_folder_name = 'CHECKS'
+checks_folder_name = 'CHECKS'  # Name of the folder where all necessary checks will be stored.
 checks_folder_path = root_folder + '/' + checks_folder_name
 
 # Call the dolfin-converter if necessary.
-if filename.split('.')[-1] != 'xml':
+if filename.split('.')[-1] != 'xml':  # If the user does not load a DOLFIN-ready file, we need to make conversions.
     meshname = msh2xml(filename, root_folder, mesh_folder_path)
     filepath = mesh_folder_path + '/' + meshname
 
 # %% ELECTROSTATICS.
 # Define the values to be used for the simulation.
-T_h = 1.
+T_h = 1.  # Non-dimensional temp.
 Lambda = Lambda_list[0]
 B = B_list[0]
 E0 = E0_list[0]
+
+# Define some non-dimensional parameters.
 Chi = (LiquidInps.h*LiquidInps.k_prime)/(Lambda*LiquidInps.k_B*LiquidInps.vacuum_perm*LiquidInps.eps_r)
 Phi = LiquidInps.Solvation_energy/(LiquidInps.k_B*T_0*T_h)
 
@@ -157,8 +159,8 @@ Notice the structure of the boundary conditions:
         element is the subdomain to which it belongs to.
 """
 
-top_potential = -E0*z0/r0
-ref_potential = 0
+top_potential = -E0*z0/r0  # Define the potential at the Top Wall.
+ref_potential = 0  # Define ground BC.
 boundary_conditions_elec = {'Top_Wall': {'Dirichlet': [top_potential, 'vacuum']},
                             'Inlet': {'Dirichlet': [ref_potential, 'liquid']},
                             'Tube_Wall_R': {'Dirichlet': [ref_potential, 'liquid']},
@@ -167,6 +169,7 @@ boundary_conditions_elec = {'Top_Wall': {'Dirichlet': [top_potential, 'vacuum']}
                             'Lateral_Wall_L': {'Neumann': 'vacuum'},
                             'Tube_Wall_L': {'Neumann': 'vacuum'}}
 
+# Define the boundary conditions for the initial problem, which is required for the iterative solver (as an init. guess)
 bcs_elec_init = {'Top_Wall': {'Dirichlet': [top_potential, 'vacuum']},
                  'Interface': {'Dirichlet': [ref_potential, 'vacuum']},
                  'Bottom_Wall': {'Dirichlet': [ref_potential, 'vacuum']},
@@ -198,6 +201,10 @@ recommended.
 Electrostatics.write_check_files()
 
 # CREATE THE RESTRICTIONS.
+""" Restrictions are the objects (or files) used by the multiphenics library to recognize a specific subdomain/boundary.
+These are useful to define functions on a specific subdomain or boundary, which is the case of the Lagrangian
+multiplier, which for this problem should be defined only at the interface boundary.
+"""
 # Generate the restrictions.
 restrictions_dict = Electrostatics.generate_restrictions()
 
@@ -209,7 +216,7 @@ with these restrictions will be hard to debug.
 """
 Electrostatics.write_restrictions()
 
-# DEFINE THE MIDPOINTS OF THE FACETS ON THE INTERFACE.
+# Get the midpoints and node points that define the interface boundary.
 r_mids, z_mids = PostProcessing.get_midpoints_from_boundary(boundaries, boundaries_ids['Interface'])
 coords_mids = [r_mids, z_mids]
 r_nodes, z_nodes = PostProcessing.get_nodepoints_from_boundary(mesh, boundaries, boundaries_ids['Interface'])
@@ -255,7 +262,7 @@ E_v_r, E_v_z = Poisson.split_field_components(Electrostatics.E_v, coords_nodes)
 E_v_n_array = PostProcessing.extract_from_function(Electrostatics.E_v_n, coords_mids)
 E_t_array = PostProcessing.extract_from_function(Electrostatics.E_t, coords_mids)
 
-# Compute the non dimensional evaporated charge and current.
+# Define an auxiliary term for the computations.
 K = 1+Lambda*(T_h - 1)
 
 E_l_n = (Electrostatics.E_v_n-Electrostatics.sigma)/LiquidInps.eps_r
@@ -267,6 +274,7 @@ E_l_r, E_l_z = Poisson.get_liquid_electric_field(mesh=mesh, subdomain_data=bound
                                                  boundary_id=boundaries_ids['Interface'], normal_liquid=E_l_n_array,
                                                  tangential_liquid=E_t_array)
 
+# Calculate the non-dimensional evaporated charge and current.
 j_ev = (Electrostatics.sigma*T_h)/(LiquidInps.eps_r*Chi) * fn.exp(-Phi/T_h * (
         1-pow(B, 1/4)*fn.sqrt(Electrostatics.E_v_n)))
 j_cond = K*E_l_n
@@ -335,6 +343,8 @@ Ca = LiquidInps.mu_0*u_star/(2*LiquidInps.gamma)
 boundary_conditions_fluids = {'Tube_Wall_R': {'Dirichlet':
                                                 ['v', fn.Constant((0., 0.))]}
                               }
+
+# Define the inputs required by the Stokes solver.
 inputs_fluids = {'Weber number': We,
                  'Capillary number': Ca,
                  'Relative perm': LiquidInps.eps_r,
@@ -349,10 +359,13 @@ inputs_fluids = {'Weber number': We,
                  'Vacuum electric field': Electrostatics.E_v,
                  'Vacuum normal component': Electrostatics.E_v_n}
 
+# Initialize the Stokes class and solve.
 Stokes = NS(inputs_fluids, boundary_conditions_fluids, subdomains=subdomains, boundaries=boundaries, mesh=mesh,
             boundaries_ids=boundaries_ids, restrictions_path=restrictions_folder_path, mesh_path=mesh_folder_path,
             filename=filename)
 Stokes.solve()
+
+# Obtain useful information from the solution.
 p = Stokes.p_star - P_r_h + I_h*C_R
 theta_fun = NS.block_project(Stokes.theta, mesh, Electrostatics.restrictions_dict['interface_rtc'], boundaries,
                              boundaries_ids['Interface'], space_type='scalar', boundary_type='internal')
@@ -414,7 +427,11 @@ plotpy.lineplot([(r_mids, j_conv_arr)],
 
 def get_derivatives(independent_param, fun):
     """
-    Get the derivatives of a given function. Computation of the derivatives have been checked using WolframAlpha.
+    Get the derivatives of a given function. To do, the Sympy library is used. Sympy is quite useful for symbolic
+    mathematical operations, and derivatives of a given function (using their own functions) is as easy as calling a
+    simple function.
+
+    Computation of the derivatives have been checked using WolframAlpha.
     Args:
         independent_param: string. The independent parameter with respect which the derivatives will be computed.
         fun: string. The function to be derived. This must contain only a single independent parameter and any angle
@@ -424,35 +441,53 @@ def get_derivatives(independent_param, fun):
         Lambda functions of the first and second derivatives, only as a function of the independent parameter.
 
     """
-    sym_ind_param = sym.symbols(independent_param)
-    sym_exp = sym.sympify(fun)
+    # Define a Sympy symbol.
+    """ Defining a Sympy symbol will be useful to tell the function with respect to which parameter should the function
+    compute the derivative.
+    """
+    sym_ind_param = sp.Symbol(independent_param)
+
+    # Transform the string with the function into a Sympy expression.
+    """ When doing this transformation, Sympy will automatically recognize the independent variable as a symbol, in case
+    there is only a single parameter. If more than one parameter is in the string, it will recognize several symbols.
+    For the latter case, the parse_expr function is recommended. For help on this function, type help(sp.parse_expr).
+    """
+    sym_exp = sp.sympify(fun)
+
+    # Compute the first and second derivatives of the introduced function.
     fprime = sym_exp.diff(sym_ind_param)
     fprime2 = fprime.diff(sym_ind_param)
-    fprimeLambdified = sym.lambdify(sym_ind_param, fprime, 'numpy')
-    fprime2Lambdified = sym.lambdify(sym_ind_param, fprime2, 'numpy')
+
+    # Transform the derivatives into evaluable functions.
+    fprimeLambdified = sp.lambdify(sym_ind_param, fprime, 'numpy')
+    fprime2Lambdified = sp.lambdify(sym_ind_param, fprime2, 'numpy')
 
     return fprimeLambdified, fprime2Lambdified
 
 
 # Introduce the surface parametrization.
 try:
-    if app.geom_data.angle_unit == 'degrees':
+    if app.geom_data.angle_unit == 'degrees':  # Need to transform degrees into radians.
         z_aux = GMSHInterface.angle_handler(app.geom_data.z_fun.get())
     else:
         z_aux = app.geom_data.z_fun.get()
+
+    # Get independent variable from equation.
     ind_var = GMSHInterface.get_independent_var_from_equation(z_aux)
-    ind_var_sym = sym.symbols(ind_var)
-    z_param = sym.sympify(z_aux)
+
+    # Create a Sympy symbol for the independent parameter.
+    ind_var_sym = sp.Symbol(ind_var)
+    z_param = sp.sympify(z_aux)
     zprimeLambdified, zprime2Lambdified = get_derivatives('s', z_param)
     r_param = app.geom_data.r_fun.get()
-    r_param = sym.sympify(r_param)
+    r_param = sp.sympify(r_param)
     ind_data = app.geom_data.base_data
 except AttributeError:
     if app.geom_data.angle_unit == 'degrees':
         z_aux = GMSHInterface.angle_handler(app.geom_data.z_of_r.get())
     else:
         z_aux = app.geom_data.z_of_r.get()
-    z_param = sym.sympify(z_aux)
+    z_param = sp.sympify(z_aux)
     zprimeLambdified, zprime2Lambdified = get_derivatives('r', z_param)
     r_data = app.geom_data.base_data
 
@@ -467,11 +502,11 @@ try:  # Case when a z(r) function is defined.
     n_k = n_k.reshape((len(r_data), 2))
     n_k = n_k[::-1]
 except NameError:  # when independent functions for r and z were defined.
-    sym_eq = sym.sympify(app.geom_data.r_fun.get())
+    sym_eq = sp.sympify(app.geom_data.r_fun.get())
     ind_data = np.array([])
-    s = sym.Symbol('s')
+    s = sp.Symbol('s')
     for r in r_nodes:
-        ind_data = np.append(ind_data, sym.solvers.solve(sym_eq - r, s)[0])
+        ind_data = np.append(ind_data, sp.solvers.solve(sym_eq - r, s)[0])
     for num in ind_data:
         n_k = np.append(n_k, (1/(1+zprimeLambdified(num)**2)**0.5)*np.array([-zprimeLambdified(num), 1]))
         del_dot_n = np.append(del_dot_n, ((1+zprimeLambdified(num)**2)*zprimeLambdified(num) + \
@@ -541,12 +576,14 @@ The structure of the initial guess is similar to the one used by the solver, tha
 y_init = [y0, y'0]
 """
 init_guess = np.zeros((2, mesh_bvp.size))
-init_guess[0, 0] = 0.5
+init_guess[0, 0] = 0.8
 init_guess[0, 1] = 0
 solver.load_initial_guess(init_guess)
 
 # Run the solver.
 sol = solver.solve()
+
+# Plot the solution.
 r_plot = np.linspace(0, 1, 200)
 y_plot = sol.sol(r_plot)[0]
 plotpy.lineplot([(r_plot, y_plot, 'First iteration'), (r_nodes, z_nodes, 'Initial shape')],
