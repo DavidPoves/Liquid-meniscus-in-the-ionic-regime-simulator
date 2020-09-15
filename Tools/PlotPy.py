@@ -31,6 +31,29 @@ class PlotPy(object):
     """
 
     def __init__(self, **kwargs):
+        """
+        Initialize the PlotPy class object.
+        Args:
+            **kwargs: Accepted kwargs are:
+                - latex: Boolean to let the class know if latex may be used or not.
+                - fontsize: Value of the fontsize of the plot (integer or float).
+                - font_properties: Dictionary containing properties of the fonts. This is specially useful when using
+                latex. Available font properties are: family, style, fig_title_style, legend_title_style,
+                legend_labels_style and axis_labels_style. Family and style properties' options are the ones available
+                for Matplotlib. With respect to the rest of the options, the reader may refer to:
+                https://www.overleaf.com/learn/latex/font_typefaces and
+                https://www.overleaf.com/learn/latex/Font_sizes,_families,_and_styles \n
+                - grid_properties: Dictionary whose keys are the options Matplotlib has for the creation of grids. All
+                available options can be found at Matplotlib's docs.\n
+                - figsize: Tuple of the figure size.
+                - background_style: All available background styles can be found at Matplotlib' docs.
+                - save_images: Boolean to indicate wether images might be saved or not.
+                - images_folder: String of the path of the folder where images may be saved, in case save_images is True
+                - extension: String containing the extension of the image to be saved, like '.jpg', or '.png'.
+                - save_mat: Boolean indicating if the data should be stored in .mat files.
+                - mat_folder: String of the path of the folder where the .mat files may be stored if save_mat is True.
+
+        """
         kwargs.setdefault('latex', False)
         kwargs.setdefault('fontsize', 12)
         kwargs.setdefault('font_properties',
