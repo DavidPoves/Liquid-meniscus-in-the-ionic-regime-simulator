@@ -9,7 +9,6 @@ Data:
 """
 
 # Do the necessary imports.
-from abc import ABC
 
 import numpy as np
 import os
@@ -17,7 +16,7 @@ import fenics as fn
 import multiphenics as mp
 
 from Solvers.Poisson_solver import Poisson
-from GMSH_Interface_Daniel import GMSHInterface
+from Tools.GMSH_Interface_Daniel import GMSHInterface
 from Tools.PlotGeometry import plot_geo
 from Tools.MeshConverter import msh2xml
 from Tools.PostProcessing import PostProcessing

@@ -37,6 +37,42 @@ used in this part.
 class Poisson(object):
     def __init__(self, inputs, boundary_conditions, msh_filepath, restrictionspath, checkspath,
                  boundary_conditions_init=None, liquid_inps=None):
+        """
+        Initialize the Poisson solver with the required inputs. The process to really solve the electrostatics
+        problem is simple: Load the initial arguments when this class is initialized, load the mesh by calling the
+        method get_mesh from this class. Next, get boundaries and subdomains with get_boundaries and get_subdomains,
+        respectively. Finally, generate the restrictions with generate_restrictions method, and finally call the solve
+        method with the desired solving parameters (these are explained in the solve method from this class).
+
+        It is strongly recommended to write both check files and write the restrictions files into external files to
+        check if subdomains, boundaries and subdomains were generated properly, to avoid non desired errors or results
+        with no sense. To do so, always open the .xmdf files with Paraview (or any other program compatible with this
+        extension) and ensure that these files show proper definitions of these parameters.
+        Args:
+            inputs: Dictionary containing all the required inputs for the simulation. These are:
+                - Relative_perm: Relative permittivity of the medium wrt vacuum.
+                - Phi: Non-dimensional parameter defined in Ximo's thesis.
+                - Non_dimensional_temperature.
+                - Lambda: Non-dimensional parameter as defined by Ximo in his thesis.
+                - Contact_line_radius: Dimensional radius of the capillary tube.
+                - Chi: Non-dimensional parameter as defined in Ximo's thesis.
+                - B: Ratio of the contact radius to the tip radius (r_star).
+                - Convection charge.
+            boundary_conditions: Dictionary with a structure like the one below:
+                boundary_conditions = {'Top_Wall': {'Dirichlet': [top_potential, 'vacuum']},
+                            'Inlet': {'Dirichlet': [ref_potential, 'liquid']},
+                            'Tube_Wall_R': {'Dirichlet': [ref_potential, 'liquid']},
+                            'Bottom_Wall': {'Dirichlet': [ref_potential, 'vacuum']},
+                            'Lateral_Wall_R': {'Neumann': 'vacuum'},
+                            'Lateral_Wall_L': {'Neumann': 'vacuum'},
+                            'Tube_Wall_L': {'Neumann': 'vacuum'}}
+            msh_filepath: String containing the path of the mesh.
+            restrictionspath: String containing the path of the restrictions file.
+            checkspath: String with the path of the folder where the checks file will be stored.
+            boundary_conditions_init: Boundary conditions of the initial problem, used as an initial guess for the
+            main iterative process.
+            liquid_inps: Liquid Inputs, which is an object loaded from the Input_Parameters.py file.
+        """
 
         self.filename = msh_filepath.split('/')[-1]
         self.meshpath = msh_filepath
