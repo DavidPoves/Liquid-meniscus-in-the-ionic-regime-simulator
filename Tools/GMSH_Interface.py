@@ -75,15 +75,15 @@ class GMSHInterface(object):
     @staticmethod
     def set_transfinite_surface(tag):
         """
-        This method will create a transfinite surface from a given surface with id tag.
+        This method will create a transfinite surface from a given surface id tag.
         Args:
             tag (int): Tag of the surface.
 
         Returns:
-
+            GMSH-ready code to generate a transfinite surface.
         """
         if not isinstance(tag, int):
-            raise TypeError('Inputs of this function must be integers.')
+            raise TypeError('Id tag must be an integer.')
         else:
             code = f"Transfinite Surface {{{tag}}}"
             return code
@@ -98,7 +98,6 @@ class GMSHInterface(object):
 
         Returns:
             Distance between the two points conforming the curve.
-
         """
         if not isinstance(curve, Entity.Curve):
             raise TypeError(f'Inputs must be of the type py2gmsh.Entity.Curve, not {type(curve)}.')
@@ -179,6 +178,19 @@ class GMSHInterface(object):
 
     @staticmethod
     def avoid_built_in_functions(string, replace_by=''):
+        """
+        Avoid built-in functions from being replaced by substituting them by another character/string. This will be
+        useful when parsing the user input for the function of the interface.
+        An example of its usefulness is when looking for the independent parameter of an equation. If the independent
+        parameter character is contained within one of the built in functions, it will be replaced by the corresponding
+        value, which is not desired.
+        Args:
+            string:
+            replace_by:
+
+        Returns:
+
+        """
         string = string.replace('s i n', replace_by)
         string = string.replace('t a n', replace_by)
         string = string.replace('c o s', replace_by)
