@@ -332,7 +332,7 @@ plotpy.lineplot([(r_mids, n_taue_n_arr)],
 # Define the required non dimensional parameters.
 k = LiquidInps.k_0
 E_c = np.sqrt((4*LiquidInps.gamma)/(r0*LiquidInps.vacuum_perm))
-E_star = (4*np.pi*LiquidInps.vacuum_perm*LiquidInps.Solvation_energy**2)/(1.60218e-19)**3
+E_star = (4*np.pi*LiquidInps.vacuum_perm*LiquidInps.Solvation_energy**2)/1.60218e-19**3
 j_star = k*E_star/LiquidInps.eps_r
 u_star = j_star/(LiquidInps.rho_0*LiquidInps.q_m)
 r_star = B*r0
