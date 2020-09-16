@@ -583,8 +583,18 @@ class Stokes(object):
 
     @staticmethod
     def check_evaporation_condition(u_n, j_ev, coords):
+        """
+        Check the absolute difference between the normal component of the velocity and the evaporated charge. According
+        to the problem definition, these two parameters must be equal.
+        Args:
+            u_n: FEniCS function of the normal component of the velocity.
+            j_ev: FEniCS function of the evaporated charge.
+            coords: Array containing the radial and axial coordinates of the meniscus, where this must be fulfilled.
 
-        # u_n = j_ev
+        Returns:
+
+        """
+
         check = abs(u_n - j_ev)
         check = PostProcessing.extract_from_function(check, coords)
 
