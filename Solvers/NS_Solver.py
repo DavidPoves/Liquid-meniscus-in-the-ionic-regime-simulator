@@ -412,7 +412,8 @@ class Stokes(object):
 
         # Compute the convection charge transport.
         special = (fn.Identity(self.mesh.topology().dim()) - fn.outer(n, n)) * fn.grad(self.sigma)
-        self.j_conv = self.Kc * self.B * (fn.dot(self.sigma * n, fn.dot(fn.grad(self.u), n)) - fn.dot(self.u, special))
+        self.j_conv = self.Kc * self.B**(3/2) * (fn.dot(self.sigma * n, fn.dot(fn.grad(self.u), n)) -
+                                                 fn.dot(self.u, special))
         self.j_conv = Stokes.block_project(self.j_conv, self.mesh, self.restrictions_dict['interface_rtc'],
                                            self.boundaries, self.boundaries_ids['Interface'], space_type='scalar',
                                            boundary_type='internal', sign='-')
