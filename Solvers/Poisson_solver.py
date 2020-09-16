@@ -252,7 +252,7 @@ class Poisson(object):
         """
         Create the measurements from the generated subdomains and boundaries
         objects. The defined measurements are:
-            - dx: Area differential.
+            - dx: Area measure.
             - ds: External boundaries measure.
             - dS: Internal boundaries measure.
         Returns
@@ -422,12 +422,22 @@ class Poisson(object):
         # FUNCTION SPACES #
         # --------------------------------------------------------------------
         # Extract the restrictions to create the function spaces.
+        """ This variable will be used by multiphenics when creating function spaces. It will create function spaces
+            on the introduced restrictions. 
+        """
         restrictions_block = [self.restrictions_dict['domain_rtc'], self.restrictions_dict['interface_rtc']]
 
         # Base Function Space.
         V = fn.FunctionSpace(self.mesh, 'Lagrange', 2)
 
         # Block Function Space.
+        """ Block Function Spaces are similar to FEniCS function spaces. However, since we are creating function spaces
+        based on the block of restrictions, we need to create a 'block of function spaces' for each of the restrictions.
+        That block of functions is the list [V, V] from the line of code below this comment. They are assigned in the
+        same order in which the block of restrictions has been created, that is:
+            - V -> domain_rtc
+            - V -> interface_rtc
+        """
         W = mp.BlockFunctionSpace([V, V], restrict=restrictions_block)
 
         # Check the dimensions of the created block function spaces.

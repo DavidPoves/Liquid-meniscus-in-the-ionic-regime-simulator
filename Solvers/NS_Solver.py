@@ -215,6 +215,10 @@ class Stokes(object):
     def get_measures(self):
         """
         Get measures of the domain given the required data.
+        The defined measurements are:
+            - dx: Area measure.
+            - ds: External boundaries measure.
+            - dS: Internal boundaries measure.
         Returns:
 
         """
