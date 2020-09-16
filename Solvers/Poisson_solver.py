@@ -56,16 +56,10 @@ class Poisson(object):
                 - Lambda: Non-dimensional parameter as defined by Ximo in his thesis.
                 - Contact_line_radius: Dimensional radius of the capillary tube.
                 - Chi: Non-dimensional parameter as defined in Ximo's thesis.
-                - B: Ratio of the contact radius to the tip radius (r_star).
+                - B: Ratio of the tip radius (r_star) to the contact line radius.
                 - Convection charge.
             boundary_conditions: Dictionary with a structure like the one below:
-                boundary_conditions = {'Top_Wall': {'Dirichlet': [top_potential, 'vacuum']},
-                            'Inlet': {'Dirichlet': [ref_potential, 'liquid']},
-                            'Tube_Wall_R': {'Dirichlet': [ref_potential, 'liquid']},
-                            'Bottom_Wall': {'Dirichlet': [ref_potential, 'vacuum']},
-                            'Lateral_Wall_R': {'Neumann': 'vacuum'},
-                            'Lateral_Wall_L': {'Neumann': 'vacuum'},
-                            'Tube_Wall_L': {'Neumann': 'vacuum'}}
+                boundary_conditions = {'boundary_name': {'Dirichlet/Neumann': [value, 'subdomain_name']}, ...}
             msh_filepath: String containing the path of the mesh.
             restrictionspath: String containing the path of the restrictions file.
             checkspath: String with the path of the folder where the checks file will be stored.

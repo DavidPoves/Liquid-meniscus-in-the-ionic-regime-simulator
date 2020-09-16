@@ -18,6 +18,45 @@ df.parameters["ghost_mode"] = "shared_facet"  # required by dS
 
 class Stokes(object):
     def __init__(self, inputs, boundary_conditions, **kwargs):
+        """
+        Initialize the Stokes solver to solve the hydrodynamics problem from Ximo's thesis. The process to achieve a
+        solution is quite simple: Initialize the Stokes class with the required inputs, as explained below, and call the
+        solve method from this class.
+
+        When solving Stokes, it is assumed that the electrostatics problem has been solved. Thus, no check files are
+        written on this class. If this is not the case (you may have a FEniCS function for the potential) then you may
+        call the methods from the Poisson class, which are static (no need of initialization of the main class).
+        Args:
+            inputs: Dictionary with the inputs required to solve the Stokes simulation. The dictionary keys must be:
+                - Weber number.
+                - Capillary number.
+                - Relative perm: Relative permittivity of the medium with respect to vacuum.
+                - B: Ratio of the meniscus tip (r_star) to the contact line radius.
+                - Non dimensional temperature.
+                - Sigma: Non-dimensional surface charge density.
+                - Phi, Chi: Non-dimensional parameters as defined in Ximo's thesis.
+                - Potential.
+                - Contact line radius: Dimensional radius of the capillary tube.
+                - Vacuum electric field: This is returned by the Poisson solver.
+                - Vacuum normal component: Normal component of the vacuum electric field at the meniscus.
+            boundary_conditions: Dictionary with a structure like the one below:
+                boundary_conditions = {'boundary_name': {'Dirichlet/Neumann': [value, 'subdomain_name']}, ...}
+            **kwargs: Accepted kwargs are:
+                - boundaries: File containing all the information regarding boundaries.
+                - boundaries_ids: Dictionary whose keys are the boundaries names, just as defined in GMSH, whose values
+                are the ids of these boundaries.
+                - subdomains: File containing all the information related with subdomains.
+                - mesh: Mesh object of the problem.
+                - restrictions: Dictionary whose keys have the following form: 'subdomain-name_rtc' and whose values are
+                the restrictions of that specific subdomain. These are files required by multiphenics to define
+                functions on specific subdomains/boundaries. These are useful to define the Lagrange multipliers on
+                the meniscus boundary. Otherwise, it would much harder to define using raw FEniCS.
+                - mesh_path: String containing the path where the path is stored. In case a mesh object is not provided,
+                this kwarg must be introduced when initializing the class.
+                - restrictions_path: String containing the path where the restrictions are stored. If the user does not
+                provide any restrictions files, this kwarg must be an input.
+                - filename: String containing the name of the .msh file (extension included).
+        """
 
         # Unpack the inputs.
         self.We = inputs['Weber number']
@@ -93,15 +132,31 @@ class Stokes(object):
             raise TypeError('The type of the loaded mesh is not the proper one. It must have the type dolfin.cpp.mesh.Mesh.')
 
     def load_mesh(self):
+        """
+        Method to load the mesh file given the mesh folder path.
+        Returns:
+
+        """
         return fn.Mesh(self.mesh_folder_path)
 
     def load_restrictions(self):
+        """
+        Load the restrictions files given its folder.
+        Returns:
+
+        """
         self.restrictions_dict = dict()
         for rtc_folder in os.listdir(self.restrictions_path):
             rtc_name = rtc_folder.split('_')[0].lower() + '_rtc'
             self.restrictions_dict[rtc_name] = mp.MeshRestriction(self.mesh, self.restrictions_path + '/' + rtc_folder)
 
     def get_mesh(self):
+        """
+        Method to check the different options available when loading a mesh. It can be given directly by its object, or
+        the user may introduce the path. If none of them is given, an error will be raised.
+        Returns:
+
+        """
         # Do proper checks before loading the mesh.
         if self.mesh_folder_path is None and self.mesh is None:
             raise Exception('If a mesh has not been loaded when loading this class, user must include a path to load the .xml file under the variable mesh_path.')
@@ -114,6 +169,12 @@ class Stokes(object):
             self.check_mesh()
 
     def get_boundaries(self):
+        """
+        Load the boundaries data of the mesh. More specifically, this method loads the facet_region.xml file generated
+        by the dolfin-converter.
+        Returns:
+
+        """
         if self.boundaries is None:
             bound_name = self.filename.split('.')[0] + '_facet_region.xml'
             file = self.mesh_folder_path + '/' + bound_name
@@ -123,7 +184,12 @@ class Stokes(object):
             self.boundaries_ids, _ = GMSHInterface.get_boundaries_ids(self.geo_file)
 
     def get_subdomains(self):
+        """
+        Load the subdomains data for a given mesh. More specifically, this method loads the physical_region.xml file
+        generated by the dolfin-converter.
+        Returns:
 
+        """
         if self.subdomains is None:
             sub_name = self.filename.split('.')[0] + '_physical_region.xml'
             file = self.mesh_folder_path + '/' + sub_name
@@ -133,6 +199,12 @@ class Stokes(object):
         self.subdomains_ids = GMSHInterface.get_subdomains_ids(self.geo_file)
 
     def get_restrictions(self):
+        """
+        Get restrictions based on user's input. If the user does not provide a restrictions variable nor a path to them,
+        an error will raise. Otherwise, they will be loaded accordingly.
+        Returns:
+
+        """
         if self.restrictions_dict is None and self.restrictions_path is None:
             raise Exception('If restrictions are not loaded when initializing this class, the path to them must be included.')
         elif self.restrictions_dict is None and self.restrictions_path is not None:
@@ -141,11 +213,21 @@ class Stokes(object):
             pass
 
     def get_measures(self):
-        self.dx = fn.Measure('dx')(subdomain_data=self.subdomains)
-        self.ds = fn.Measure('ds')(subdomain_data=self.boundaries)
-        self.dS = fn.Measure('dS')(subdomain_data=self.boundaries)
+        """
+        Get measures of the domain given the required data.
+        Returns:
+
+        """
+        self.dx = fn.Measure('dx')(subdomain_data=self.subdomains)  # Area measure.
+        self.ds = fn.Measure('ds')(subdomain_data=self.boundaries)  # External boundaries measures.
+        self.dS = fn.Measure('dS')(subdomain_data=self.boundaries)  # Internal boundaries measures (interface boundary).
 
     def solve(self):
+        """
+        Solve the Stokes problem based on the mathematical procedure presented by Ximo in this thesis.
+        Returns:
+
+        """
 
         # --------------------------------------------------------------------
         # DEFINE THE INPUTS #
@@ -155,6 +237,10 @@ class Stokes(object):
         self.get_subdomains()
         self.get_restrictions()
 
+        # Create a block of restrictions.
+        """ This variable will be used by multiphenics when creating function spaces. It will create function spaces
+        on the introduced restrictions. 
+        """
         block_restrictions = [self.restrictions_dict['liquid_rtc'], self.restrictions_dict['liquid_rtc'],
                               self.restrictions_dict['interface_rtc']]
 
@@ -166,18 +252,33 @@ class Stokes(object):
         V = fn.VectorFunctionSpace(self.mesh, "CG", 2)
         Q = fn.FunctionSpace(self.mesh, "DG", 1)
         L = fn.FunctionSpace(self.mesh, "DGT", 0)  # DGT 0.
+
+        # Create a block function space.
+        """ Block Function Spaces are similar to FEniCS function spaces. However, since we are creating function spaces
+        based on the block of restrictions, we need to create a 'block of function spaces' for each of the restrictions.
+        That block of functions is the list [V, Q, L] from the line of code below this comment. They are assigned in the
+        same order in which the block of restrictions has been created, that is:
+            - V -> liquid_rtc
+            - Q -> liquid_rtc
+            - L -> interface_rtc
+        """
         W = mp.BlockFunctionSpace([V, Q, L], restrict=block_restrictions)
         # --------------------------------------------------------------------
 
         # --------------------------------------------------------------------
         # TRIAL/TEST FUNCTIONS #
         # --------------------------------------------------------------------
+        """ Trial and test functions are created the multiphenics commands for creating these functions. However, the
+        difference wrt the FEniCS functions for this purpose, a trial/test function will be created for each of the
+        restrictions (for each function space of the BlockFunctionSpace).
+        """
         test = mp.BlockTestFunction(W)
         (v, q, l) = mp.block_split(test)
 
         trial = mp.BlockTrialFunction(W)
         (u, p, theta) = mp.block_split(trial)
 
+        # Use a value of previous velocity to make the system linear, as explained by Ximo.
         u_prev = fn.Function(V)
         u_prev.assign(fn.Constant((0.1, 0.1)))
 
@@ -242,6 +343,12 @@ class Stokes(object):
         # --------------------------------------------------------------------
         # DEFINE THE BOUNDARY CONDITIONS #
         # --------------------------------------------------------------------
+        """ When creating Dirichlet boundary conditions with the multiphenics code, a function space from the Block
+        must be selected, depending on which subdomain/boundary should it be applied. To do so, the .sub method is used.
+        The input is an integer, which depends on the function space in which you want the BC to be applied. For this
+        case, inputs of 0, 1 and 2 are accepted, because we have 3 restrictions. The assignments of these ids to the 
+        function space is the one done in the block of restrictions.
+        """
         bcs_u = []
         bcs_p = []
         for i in self.boundary_conditions:
