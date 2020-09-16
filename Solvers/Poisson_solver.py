@@ -54,7 +54,6 @@ class Poisson(object):
                 - Phi: Non-dimensional parameter defined in Ximo's thesis.
                 - Non_dimensional_temperature.
                 - Lambda: Non-dimensional parameter as defined by Ximo in his thesis.
-                - Contact_line_radius: Dimensional radius of the capillary tube.
                 - Chi: Non-dimensional parameter as defined in Ximo's thesis.
                 - B: Ratio of the tip radius (r_star) to the contact line radius.
                 - Convection charge.
@@ -82,7 +81,6 @@ class Poisson(object):
         self.Phi = inputs['Phi']
         self.T_h = inputs['Non_dimensional_temperature']
         self.Lambda = inputs['Lambda']
-        self.r0 = inputs['Contact_line_radius']
         self.Chi = inputs['Chi']
         self.B = inputs['B']
         self.j_conv = inputs['Convection charge']

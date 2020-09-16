@@ -338,6 +338,7 @@ u_star = j_star/(LiquidInps.rho_0*LiquidInps.q_m)
 r_star = B*r0
 We = (LiquidInps.rho_0*u_star**2*r_star)/(2*LiquidInps.gamma)
 Ca = LiquidInps.mu_0*u_star/(2*LiquidInps.gamma)
+Kc = (LiquidInps.vacuum_perm * LiquidInps.eps_r * u_star) / (LiquidInps.k_0*r_star)
 
 # Define the boundary conditions.
 boundary_conditions_fluids = {'Tube_Wall_R': {'Dirichlet':
@@ -355,7 +356,7 @@ inputs_fluids = {'Weber number': We,
                  'Phi': Phi,
                  'Chi': Chi,
                  'Potential': Electrostatics.phi,
-                 'Contact line radius': r0,
+                 'Kc': Kc,
                  'Vacuum electric field': Electrostatics.E_v,
                  'Vacuum normal component': Electrostatics.E_v_n}
 
@@ -409,19 +410,6 @@ plotpy.lineplot([(r_nodes, j_conv_arr)],
 plotpy.lineplot([(r_mids, theta_fun_arr)],
                 xlabel=x_label, ylabel=r'$\mathbf{n}\cdot\hat{\bar{\bar{\tau}}}_m \cdot \mathbf{n}$',
                 fig_title='Normal component of the hydraulic stress at the meniscus')
-
-# %% CHECK CONVECTION CHARGE TRANSPORT.
-n = fn.FacetNormal(mesh)
-special = (fn.Identity(mesh.topology().dim()) - fn.outer(n, n))*fn.grad(Stokes.sigma)
-j_conv = fn.dot(Electrostatics.sigma*n, fn.dot(fn.grad(Stokes.u), n)) - fn.dot(Stokes.u, special)
-j_conv = Stokes.block_project(j_conv, mesh, Electrostatics.restrictions_dict['interface_rtc'], Stokes.boundaries,
-                              Stokes.boundaries_ids['Interface'], space_type='scalar', boundary_type='internal',
-                              sign='-')
-j_conv_arr = PostProcessing.extract_from_function(j_conv, coords_mids)
-
-plotpy.lineplot([(r_mids, j_conv_arr)],
-                xlabel=x_label, ylabel=r'$\hat{j}_{conv}$',
-                fig_title='Convection charge transport')
 
 # %% SURFACE UPDATE.
 

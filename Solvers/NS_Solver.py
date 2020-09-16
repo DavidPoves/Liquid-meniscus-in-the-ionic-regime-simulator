@@ -32,11 +32,12 @@ class Stokes(object):
                 - Capillary number.
                 - Relative perm: Relative permittivity of the medium with respect to vacuum.
                 - B: Ratio of the meniscus tip (r_star) to the contact line radius.
+                - Lambda: Non-dimensional parameter as defined in Ximo's thesis.
+                - Kc: Non-dimensional parameter as defined in Ximo's thesis.
                 - Non dimensional temperature.
                 - Sigma: Non-dimensional surface charge density.
                 - Phi, Chi: Non-dimensional parameters as defined in Ximo's thesis.
                 - Potential.
-                - Contact line radius: Dimensional radius of the capillary tube.
                 - Vacuum electric field: This is returned by the Poisson solver.
                 - Vacuum normal component: Normal component of the vacuum electric field at the meniscus.
             boundary_conditions: Dictionary with a structure like the one below:
@@ -64,12 +65,12 @@ class Stokes(object):
         self.eps_r = inputs['Relative perm']
         self.B = inputs['B']
         self.Lambda = inputs['Lambda']
+        self.Kc = inputs['Kc']
         self.T_h = inputs['Non dimensional temperature']
         self.sigma = inputs['Sigma']
         self.Phi = inputs['Phi']
         self.phi = inputs['Potential']
         self.Chi = inputs['Chi']
-        self.r0 = inputs['Contact line radius']
         self.E_v = inputs['Vacuum electric field']
         self.E_v_n = inputs['Vacuum normal component']
 
@@ -102,6 +103,7 @@ class Stokes(object):
         # Initialize other variables.
         self.geo_file = self.mesh_folder_path + '/' + self.filename.split('.')[0] + '.geo'
         self.subdomains_ids = None
+        self.j_conv = None
         self.dx = None
         self.ds = None
         self.dS = None
@@ -293,6 +295,7 @@ class Stokes(object):
         # --------------------------------------------------------------------
         self.get_measures()
         self.dS = self.dS(self.boundaries_ids['Interface'])  # Restrict to the interface.
+
         # Check proper marking of the interface.
         assert fn.assemble(1*self.dS(domain=self.mesh)) > 0., "The length of the interface is zero, wrong marking."
 
@@ -408,8 +411,8 @@ class Stokes(object):
                                         boundary_type='internal', sign='+')
 
         # Compute the convection charge transport.
-        special = (fn.Identity(self.mesh.topology().dim()) - fn.outer(n, n))*fn.grad(self.sigma)
-        self.j_conv = self.sigma*fn.dot(n, fn.dot(fn.grad(u), n)) - fn.dot(u, special)
+        special = (fn.Identity(self.mesh.topology().dim()) - fn.outer(n, n)) * fn.grad(self.sigma)
+        self.j_conv = self.Kc * self.B * (fn.dot(self.sigma * n, fn.dot(fn.grad(self.u), n)) - fn.dot(self.u, special))
         self.j_conv = Stokes.block_project(self.j_conv, self.mesh, self.restrictions_dict['interface_rtc'],
                                            self.boundaries, self.boundaries_ids['Interface'], space_type='scalar',
                                            boundary_type='internal', sign='-')
