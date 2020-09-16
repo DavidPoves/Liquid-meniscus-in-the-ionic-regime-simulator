@@ -334,10 +334,10 @@ k = LiquidInps.k_0
 E_c = np.sqrt((4*LiquidInps.gamma)/(r0*LiquidInps.vacuum_perm))
 E_star = (4*np.pi*LiquidInps.vacuum_perm*LiquidInps.Solvation_energy**2)/1.60218e-19**3
 j_star = k*E_star/LiquidInps.eps_r
-u_star = j_star/(LiquidInps.rho_0*LiquidInps.q_m)
-r_star = B*r0
-We = (LiquidInps.rho_0*u_star**2*r_star)/(2*LiquidInps.gamma)
-Ca = LiquidInps.mu_0*u_star/(2*LiquidInps.gamma)
+u_star = j_star/(LiquidInps.rho_0*LiquidInps.q_m)  # Characteristic velocity.
+r_star = B*r0  # Cone tip radius.
+We = (LiquidInps.rho_0*u_star**2*r_star)/(2*LiquidInps.gamma)  # Weber number.
+Ca = LiquidInps.mu_0*u_star/(2*LiquidInps.gamma)  # Capillary number.
 Kc = (LiquidInps.vacuum_perm * LiquidInps.eps_r * u_star) / (LiquidInps.k_0*r_star)
 
 # Define the boundary conditions.

@@ -280,6 +280,7 @@ class PlotPy(object):
                         - xscale: String containing the scale of the x axis. Available options are the ones availale for
                         Matplotlib.
                         - yscale: Same as xscale, but for the y axis.
+                        - scientific: Use scientific notation on the axis info.
 
 
         Returns:
@@ -294,6 +295,7 @@ class PlotPy(object):
         kwargs.setdefault('grid', True)
         kwargs.setdefault('xscale', 'linear')
         kwargs.setdefault('yscale', 'linear')
+        kwargs.setdefault('scientific', True)
 
         # Assign to each of the available font styles their respective latex code.
         avail_styles = {'medium': 'textmd', 'bold': 'textbf',
@@ -340,6 +342,8 @@ class PlotPy(object):
             pass
 
         fig = plt.figure(figsize=self.figsize)
+        if kwargs.get('scientific'):
+            plt.ticklabel_format(style='sci', axis='both', scilimits=(0, 0))
         ax = plt.gca()
         if self.legend:
             self.i = 0
