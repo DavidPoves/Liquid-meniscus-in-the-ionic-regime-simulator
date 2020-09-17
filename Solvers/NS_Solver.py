@@ -19,15 +19,15 @@ df.parameters["ghost_mode"] = "shared_facet"  # required by dS
 class Stokes(object):
     def __init__(self, inputs, boundary_conditions, **kwargs):
         """
-        Initialize the Stokes solver to solve the hydrodynamics problem from Ximo's thesis. The process to achieve a
-        solution is quite simple: Initialize the Stokes class with the required inputs, as explained below, and call the
+        Initialize the Stokes_sim solver to solve the hydrodynamics problem from Ximo's thesis. The process to achieve a
+        solution is quite simple: Initialize the Stokes_sim class with the required inputs, as explained below, and call the
         solve method from this class.
 
-        When solving Stokes, it is assumed that the electrostatics problem has been solved. Thus, no check files are
+        When solving Stokes_sim, it is assumed that the electrostatics problem has been solved. Thus, no check files are
         written on this class. If this is not the case (you may have a FEniCS function for the potential) then you may
         call the methods from the Poisson class, which are static (no need of initialization of the main class).
         Args:
-            inputs: Dictionary with the inputs required to solve the Stokes simulation. The dictionary keys must be:
+            inputs: Dictionary with the inputs required to solve the Stokes_sim simulation. The dictionary keys must be:
                 - Weber number.
                 - Capillary number.
                 - Relative perm: Relative permittivity of the medium with respect to vacuum.
@@ -230,7 +230,7 @@ class Stokes(object):
 
     def solve(self):
         """
-        Solve the Stokes problem based on the mathematical procedure presented by Ximo in this thesis.
+        Solve the Stokes_sim problem based on the mathematical procedure presented by Ximo in this thesis.
         Returns:
 
         """
@@ -595,7 +595,7 @@ class Stokes(object):
 
         """
 
-        check = abs(u_n - j_ev)
+        check = abs(u_n - j_ev)/j_ev
         check = PostProcessing.extract_from_function(check, coords)
 
         return check

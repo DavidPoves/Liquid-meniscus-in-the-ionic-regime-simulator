@@ -539,14 +539,13 @@ class GMSHInterface(object):
         # BOTTOM WALL POINTS DEFINITION.
         # Get the number of points of the interface and divide the radius of the tube by this number.
         dist = 1/len(r_arr)
-        tot_dist = 2*dist
+        tot_dist = dist * 2
 
-        self.p_dict[self.key] = Entity.Point([1 + tot_dist, 0, 0], mesh=self.my_mesh)
-        self.point_num += 1
-        self.key = 'p' + str(self.point_num)
-        self.p_dict[self.key] = Entity.Point([1 + tot_dist - dist, 0, 0], mesh=self.my_mesh)
-        self.point_num += 1
-        self.key = 'p' + str(self.point_num)
+        for i in np.arange(1, int(tot_dist/dist)+1):
+            subtract = (i-1)*dist
+            self.p_dict[self.key] = Entity.Point([1 + tot_dist - subtract, 0, 0], mesh=self.my_mesh)
+            self.point_num += 1
+            self.key = 'p' + str(self.point_num)
 
         # Create the knee point.
         self.p_dict[self.key] = Entity.Point([1, 0, 0], mesh=self.my_mesh)

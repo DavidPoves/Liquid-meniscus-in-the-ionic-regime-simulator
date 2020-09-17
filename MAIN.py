@@ -38,7 +38,7 @@ This is the main script of the Bachelor Thesis:
 SIMULATION OF THE LIQUID MENISCUS IN THE IONIC REGIME OF CAPILLARY
 ELECTROSPRAY THRUSTERS. This will study the equilibrium of the region between
 an ionic liquid and vacuum at a meniscus of specified dimensions. In order to
-do so, the Laplace and the Navier-Stokes equations for an especific liquid will
+do so, the Laplace and the Navier-Stokes_sim equations for an especific liquid will
 be solved using the open source FEM library FEniCS. Another equations will be
 solved to finally study the equilibrium at the interface.
 This project is heavily based on the the thesis by Chase Coffman:
@@ -345,7 +345,7 @@ boundary_conditions_fluids = {'Tube_Wall_R': {'Dirichlet':
                                                 ['v', fn.Constant((0., 0.))]}
                               }
 
-# Define the inputs required by the Stokes solver.
+# Define the inputs required by the Stokes_sim solver.
 inputs_fluids = {'Weber number': We,
                  'Capillary number': Ca,
                  'Relative perm': LiquidInps.eps_r,
@@ -360,22 +360,22 @@ inputs_fluids = {'Weber number': We,
                  'Vacuum electric field': Electrostatics.E_v,
                  'Vacuum normal component': Electrostatics.E_v_n}
 
-# Initialize the Stokes class and solve.
-Stokes = Stokes(inputs_fluids, boundary_conditions_fluids, subdomains=subdomains, boundaries=boundaries, mesh=mesh,
-                boundaries_ids=boundaries_ids, restrictions_path=restrictions_folder_path, mesh_path=mesh_folder_path,
-                filename=filename)
-Stokes.solve()
+# Initialize the Stokes_sim class and solve.
+Stokes_sim = Stokes(inputs_fluids, boundary_conditions_fluids, subdomains=subdomains, boundaries=boundaries, mesh=mesh,
+                    boundaries_ids=boundaries_ids, restrictions_path=restrictions_folder_path, mesh_path=mesh_folder_path,
+                    filename=filename)
+Stokes_sim.solve()
 
 # Obtain useful information from the solution.
-p = Stokes.p_star - P_r_h + I_h*C_R
-theta_fun = Stokes.block_project(Stokes.theta, mesh, Electrostatics.restrictions_dict['interface_rtc'], boundaries,
+p = Stokes_sim.p_star - P_r_h + I_h * C_R
+theta_fun = Stokes.block_project(Stokes_sim.theta, mesh, Electrostatics.restrictions_dict['interface_rtc'], boundaries,
                                  boundaries_ids['Interface'], space_type='scalar', boundary_type='internal')
 theta_fun_arr = PostProcessing.extract_from_function(theta_fun, coords_mids)
 
 # %% RETRIEVE ALL THE IMPORTANT INFORMATION.
-u_r, u_z = Stokes.extract_velocity_components(Stokes.u, coords_nodes)
+u_r, u_z = Stokes.extract_velocity_components(Stokes_sim.u, coords_nodes)
 p_arr = PostProcessing.extract_from_function(p, coords_nodes)
-j_conv_arr = PostProcessing.extract_from_function(Stokes.j_conv, coords_nodes)
+j_conv_arr = PostProcessing.extract_from_function(Stokes_sim.j_conv, coords_nodes)
 
 plotpy.lineplot([(r_nodes, u_r, r'Radial ($\hat{r}$)'),
                  (r_nodes, u_z, r'Axial ($\hat{z}$)')],
@@ -388,9 +388,9 @@ plotpy.lineplot([(r_nodes, p_arr)],
                 fig_title='Pressure along the meniscus')
 
 # Check the normal component of the velocity and the evaporated charge.
-check = Stokes.check_evaporation_condition(Stokes.u_n, j_ev, coords_mids)
-u_n_array = PostProcessing.extract_from_function(Stokes.u_n, coords_mids)
-u_t_array = PostProcessing.extract_from_function(Stokes.u_t, coords_mids)
+check = Stokes_sim.check_evaporation_condition(Stokes_sim.u_n, j_ev, coords_mids)
+u_n_array = PostProcessing.extract_from_function(Stokes_sim.u_n, coords_mids)
+u_t_array = PostProcessing.extract_from_function(Stokes_sim.u_t, coords_mids)
 plotpy.lineplot([(r_mids, check)],
                 xlabel=x_label, ylabel=r'$\hat{u}\cdot n - \hat{j}_n^e$',
                 fig_title='Check of the charge evaporation.')
@@ -412,6 +412,8 @@ plotpy.lineplot([(r_mids, theta_fun_arr)],
                 fig_title='Normal component of the hydraulic stress at the meniscus')
 
 # %% SURFACE UPDATE.
+E_l_r.append(E_l_r[-1])
+E_l_z.append(E_l_z[-1])
 
 
 def get_derivatives(independent_param, fun):
@@ -510,23 +512,23 @@ except NameError:  # when independent functions for r and z were defined.
 Note: Get coordinates from the nodes to evaluate the fields.
 """
 Q = fn.FunctionSpace(Electrostatics.mesh, 'DG', 0)
-ux = fn.project(Stokes.u.sub(0).dx(0), Q)
-uz = fn.project(Stokes.u.sub(1).dx(1), Q)
+ux = fn.project(Stokes_sim.u.sub(0).dx(0), Q)
+uz = fn.project(Stokes_sim.u.sub(1).dx(1), Q)
 counter = 0
 residuals = np.array([])
 for r_coord, z_coord in zip(r_nodes, z_nodes):
-    a_diff = E_v_r[counter]**2 - E_v_z[counter]**2 - \
-             Stokes.eps_r*(E_l_r[counter]**2 - E_l_z[counter]**2) + \
-             Stokes.p_star([r_coord, z_coord]) - I_h*C_R - \
-             ((Stokes.eps_r*Ca*np.sqrt(B))/(1+Lambda*(T_h-1)))*(2*ux([r_coord, z_coord]))
-    b_diff = 2*E_v_r[counter]*E_v_z[counter] - \
-             2*Stokes.eps_r*E_l_r[counter]*E_l_z[counter] - \
-             ((Stokes.eps_r*Ca*np.sqrt(B))/(1+Lambda*(T_h-1)))*(ux([r_coord, z_coord]) +
-                                                                uz([r_coord, z_coord]))
-    c_diff = E_v_z[counter]**2 - E_v_r[counter]**2 - \
-             Stokes.eps_r*(E_l_z[counter]**2 - E_l_r[counter]**2) + \
-             Stokes.p_star([r_coord, z_coord]) - I_h*C_R - \
-             ((Stokes.eps_r*Ca*np.sqrt(B))/(1+Lambda*(T_h-1)))*(2*uz([r_coord, z_coord]))
+    a_diff = E_v_r[counter] ** 2 - E_v_z[counter] ** 2 - \
+             Stokes_sim.eps_r * (E_l_r[counter] ** 2 - E_l_z[counter] ** 2) + \
+             Stokes_sim.p_star([r_coord, z_coord]) - I_h * C_R - \
+             ((Stokes_sim.eps_r * Ca * np.sqrt(B)) / (1 + Lambda * (T_h - 1))) * (2 * ux([r_coord, z_coord]))
+    b_diff = 2 * E_v_r[counter] * E_v_z[counter] - \
+             2 * Stokes_sim.eps_r * E_l_r[counter] * E_l_z[counter] - \
+             ((Stokes_sim.eps_r * Ca * np.sqrt(B)) / (1 + Lambda * (T_h - 1))) * (ux([r_coord, z_coord]) +
+                                                                                  uz([r_coord, z_coord]))
+    c_diff = E_v_z[counter] ** 2 - E_v_r[counter] ** 2 - \
+             Stokes_sim.eps_r * (E_l_z[counter] ** 2 - E_l_r[counter] ** 2) + \
+             Stokes_sim.p_star([r_coord, z_coord]) - I_h * C_R - \
+             ((Stokes_sim.eps_r * Ca * np.sqrt(B)) / (1 + Lambda * (T_h - 1))) * (2 * uz([r_coord, z_coord]))
 
     # Build the difference tensor.
     diff_tensor = np.array([[a_diff, b_diff],
@@ -579,3 +581,7 @@ plotpy.lineplot([(r_plot, y_plot, 'First iteration'), (r_nodes, z_nodes, 'Initia
                 xlabel=x_label, y_label=r'$\hat{z}$',
                 fig_title='Evolution of the meniscus surface after first iteration.',
                 legend_title='Surfaces')
+
+# %% TESTS.
+# Test how to introduce the scipy.sol function into the geometry builder.
+GMSHInterface.geometry_generator(interface_fun=sol.sol, r=sol.x)
