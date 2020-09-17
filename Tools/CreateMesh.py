@@ -47,9 +47,9 @@ def save_file():
     Spawn a GUI from TKinter to let the user choose the folder where a certain file will be saved. This method is
     ready to use Apple's Dark Mode if the user is using it.
     """
-    bool_dark = interface_style_detect
-    if bool_dark:
-        apply_dark_mode()
+    # bool_dark = interface_style_detect
+    # if bool_dark:
+    #     apply_dark_mode()
     root = tk.Tk()
     root.title('Select folder to save the .geo file...')
     root.withdraw()
