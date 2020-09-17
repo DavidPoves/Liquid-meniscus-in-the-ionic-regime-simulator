@@ -584,4 +584,4 @@ plotpy.lineplot([(r_plot, y_plot, 'First iteration'), (r_nodes, z_nodes, 'Initia
 
 # %% TESTS.
 # Test how to introduce the scipy.sol function into the geometry builder.
-GMSHInterface.geometry_generator(interface_fun=sol.sol, r=sol.x)
+app.geom_data.geometry_generator(interface_fun=sol.sol, r=sol.x)

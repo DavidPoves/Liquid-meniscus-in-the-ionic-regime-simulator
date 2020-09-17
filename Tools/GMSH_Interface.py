@@ -468,16 +468,19 @@ class GMSHInterface(object):
         self.interface_fun_z = interface_fun_z
 
         # Detect which is the independent variable in the string.
-        if self.interface_fun is not None:
-            ind_var = GMSHInterface.get_independent_var_from_equation(interface_fun)
-            if kwargs.get('angle_unit') == 'degrees':
-                self.interface_fun = GMSHInterface.angle_handler(self.interface_fun)
-        elif self.interface_fun_z is not None and self.interface_fun_r is not None:
-            ind_var_r = GMSHInterface.get_independent_var_from_equation(interface_fun_r)
-            ind_var_z = GMSHInterface.get_independent_var_from_equation(interface_fun_z)
-            if kwargs.get('angle_unit') == 'degrees':
-                self.interface_fun_r = GMSHInterface.angle_handler(self.interface_fun_r)
-                self.interface_fun_z = GMSHInterface.angle_handler(self.interface_fun_z)
+        if isinstance((self.interface_fun, self.interface_fun_r, self.interface_fun_z), str):
+            if self.interface_fun is not None:
+                ind_var = GMSHInterface.get_independent_var_from_equation(interface_fun)
+                if kwargs.get('angle_unit') == 'degrees':
+                    self.interface_fun = GMSHInterface.angle_handler(self.interface_fun)
+            elif self.interface_fun_z is not None and self.interface_fun_r is not None:
+                ind_var_r = GMSHInterface.get_independent_var_from_equation(interface_fun_r)
+                ind_var_z = GMSHInterface.get_independent_var_from_equation(interface_fun_z)
+                if kwargs.get('angle_unit') == 'degrees':
+                    self.interface_fun_r = GMSHInterface.angle_handler(self.interface_fun_r)
+                    self.interface_fun_z = GMSHInterface.angle_handler(self.interface_fun_z)
+        else:
+            pass  # We assume it is an already evaluable function.
 
         # %% STEP 1: DEFINE THE POINTS OF THE GEOMETRY.
         # MENISCUS POINTS DEFINITION.
@@ -485,15 +488,19 @@ class GMSHInterface(object):
             r_arr = np.sort(kwargs.get('r'))[::-1]
             z_arr = np.array([])
             for r_val in r_arr:
-                interface_fun = self.interface_fun
-                self.key = 'p' + str(self.point_num)
-                interface_fun = GMSHInterface.replace_ind_var(interface_fun, ind_var, str(r_val))
-                z_val = nsp.eval(interface_fun)
+                if isinstance(interface_fun, str):
+                    interface_fun = self.interface_fun
+                    self.key = 'p' + str(self.point_num)
+                    interface_fun = GMSHInterface.replace_ind_var(interface_fun, ind_var, str(r_val))
+                    z_val = nsp.eval(interface_fun)
+                else:
+                    z_val = interface_fun(r_val)
                 if r_val != 1:
                     self.p_dict[self.key] = Entity.Point([r_val, z_val, 0], mesh=self.my_mesh)
                     self.point_num += 1
                     z_arr = np.append(z_arr, z_val)
             r_arr = r_arr[1:]
+
         elif interface_fun_r is not None and interface_fun_z is not None:
             r_arr = np.array([])
             z_arr = np.array([])
@@ -502,10 +509,14 @@ class GMSHInterface(object):
                 interface_fun_z = self.interface_fun_z
                 self.key = 'p' + str(self.point_num)
                 # Replace the independent variables with the corresponding values.
-                interface_fun_r = GMSHInterface.replace_ind_var(interface_fun_r, ind_var_r, str(s))
-                interface_fun_z = GMSHInterface.replace_ind_var(interface_fun_z, ind_var_z, str(s))
-                r = nsp.eval(interface_fun_r)
-                z = nsp.eval(interface_fun_z)
+                if isinstance(interface_fun_r, str) and isinstance(interface_fun_z, str):
+                    interface_fun_r = GMSHInterface.replace_ind_var(interface_fun_r, ind_var_r, str(s))
+                    interface_fun_z = GMSHInterface.replace_ind_var(interface_fun_z, ind_var_z, str(s))
+                    r = nsp.eval(interface_fun_r)
+                    z = nsp.eval(interface_fun_z)
+                else:
+                    r = interface_fun_r(s)
+                    z = interface_fun_z(s)
                 if r != 1:
                     r_arr = np.append(r_arr, r)
                     z_arr = np.append(z_arr, z)
