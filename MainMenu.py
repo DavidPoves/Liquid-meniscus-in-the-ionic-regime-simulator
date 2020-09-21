@@ -190,7 +190,7 @@ class GeometryGeneration(tk.Frame):
 		elif self.z_fun.get() is not None and self.r_fun.get() is not None:
 			self.geo_gen.geometry_generator(interface_fun_r=self.r_fun.get(), interface_fun_z=self.z_fun.get(),
 			                                independent_param=self.base_data, angle_unit=self.angle_unit)
-		self.msh_filename = self.geo_gen.mesh_generation()
+		self.msh_filename = self.geo_gen.mesh_generation_GUI()
 		main.msh_filename = self.msh_filename
 
 

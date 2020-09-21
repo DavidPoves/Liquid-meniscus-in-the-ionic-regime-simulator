@@ -73,7 +73,7 @@ y_label = r'$\hat{E}$'
 plotpy = PlotPy(latex=True, fontsize=12., figsize=(12., 7.),
                 background_style=background_style,
                 font_properties=font_properties,
-                grid_properties=grid_properties, save_images=True,
+                grid_properties=grid_properties, save_images=False,
                 save_mat=False, extension='jpg')
 
 
@@ -449,6 +449,10 @@ def get_derivatives(independent_param, fun):
     fprime = sym_exp.diff(sym_ind_param)
     fprime2 = fprime.diff(sym_ind_param)
 
+    # Substitute possible conflicts between used numerical parser and sympy symbology.
+    fprime = fprime.subs({'PI': sp.pi})
+    fprime2 = fprime2.subs({'PI': sp.pi})
+
     # Transform the derivatives into evaluable functions.
     fprimeLambdified = sp.lambdify(sym_ind_param, fprime, 'numpy')
     fprime2Lambdified = sp.lambdify(sym_ind_param, fprime2, 'numpy')
@@ -457,30 +461,30 @@ def get_derivatives(independent_param, fun):
 
 
 # Introduce the surface parametrization.
-try:
-    if app.geom_data.angle_unit == 'degrees':  # Need to transform degrees into radians.
-        z_aux = GMSHInterface.angle_handler(app.geom_data.z_fun.get())
+if app.geom_data.angle_unit == 'degrees':  # Need to transform degrees into radians.
+    if app.geom_data.z_of_r.get() == '':
+        fun_surf = GMSHInterface.angle_handler(app.geom_data.z_fun.get())
+        r_param = app.geom_data.r_fun.get()
+        r_param = sp.sympify(r_param)
+        ind_data = app.geom_data.base_data
     else:
-        z_aux = app.geom_data.z_fun.get()
-
-    # Get independent variable from equation.
-    ind_var = GMSHInterface.get_independent_var_from_equation(z_aux)
-
-    # Create a Sympy symbol for the independent parameter.
-    ind_var_sym = sp.Symbol(ind_var)
-    z_param = sp.sympify(z_aux)
-    zprimeLambdified, zprime2Lambdified = get_derivatives('s', z_param)
-    r_param = app.geom_data.r_fun.get()
-    r_param = sp.sympify(r_param)
-    ind_data = app.geom_data.base_data
-except AttributeError:
-    if app.geom_data.angle_unit == 'degrees':
-        z_aux = GMSHInterface.angle_handler(app.geom_data.z_of_r.get())
+        fun_surf = GMSHInterface.angle_handler(app.geom_data.z_of_r.get())
+        r_data = app.geom_data.base_data
+else:
+    if app.geom_data.z_of_r.get() == '':
+        fun_surf = app.geom_data.z_fun.get()
+        r_param = app.geom_data.r_fun.get()
+        r_param = sp.sympify(r_param)
+        ind_data = app.geom_data.base_data
     else:
-        z_aux = app.geom_data.z_of_r.get()
-    z_param = sp.sympify(z_aux)
-    zprimeLambdified, zprime2Lambdified = get_derivatives('r', z_param)
-    r_data = app.geom_data.base_data
+        fun_surf = app.geom_data.z_of_r.get()
+        r_data = app.geom_data.base_data
+
+# Get independent variable from equation.
+ind_var = GMSHInterface.get_independent_var_from_equation(fun_surf)
+
+# Obtain the derivatives with respect to the independent variable.
+zprimeLambdified, zprime2Lambdified = get_derivatives(ind_var, fun_surf)
 
 # Compute auxiliary terms.
 n_k = np.array([])
@@ -582,6 +586,36 @@ plotpy.lineplot([(r_plot, y_plot, 'First iteration'), (r_nodes, z_nodes, 'Initia
                 fig_title='Evolution of the meniscus surface after first iteration.',
                 legend_title='Surfaces')
 
+# %% WHAT CONVERGES.
+"""
+-> Taylor cone: - Frontal Delaunay, max size: 0.06, variable_parameter = 24.89523033034176
+                - Frontal Delaunay, max.size: 0.05, variable parameter = 24.89523033034176
+                - Frontal Delaunay, max size: 0.04, variable_parameter = 24.89523033034176
+                - Automatic, max.size: 0.1, variable parameter = 24.89523033034176
+                - Automatic, max.size: 0.2, variable parameter = 24.89523033034176
+                - Automatic, max.size: 0.3, variable parameter = 24.89523033034176
+
+-> Cosine:      - Frontal Delaunay, max size: 0.06
+                - Frontal Delaunay, max size: 0.1
+                - Frontal Delaunay, max size: 0.03
+                - Automatic, max size: 0.1
+                - Automatic, max size 0.03
+                - Automatic, max size 0.05
+    All cosine computations were done with an initial height of 0.5
+
+-> Parabolic:   - Frontal Delaunay, max size: 0.03
+"""
+
 # %% TESTS.
 # Test how to introduce the scipy.sol function into the geometry builder.
-app.geom_data.geometry_generator(interface_fun=sol.sol, r=sol.x)
+# Create a test array of values of r.
+r_test = np.linspace(0, 1, len(sol.x))
+
+# Reset required parameters to avoid the class initialization.
+app.geom_data.geo_gen.reset_geom_params()
+
+# Generate the geometry and export into .geo file.
+app.geom_data.geo_gen.geometry_generator(interface_fun=sol.sol, r=r_test)
+
+# Export the geometry and create the mesh file.
+msh_path = app.geom_data.geo_gen.mesh_generation_noGUI(mesh_folder_path+'/Prueba2.geo')

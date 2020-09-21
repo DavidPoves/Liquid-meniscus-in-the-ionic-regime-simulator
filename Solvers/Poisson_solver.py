@@ -484,13 +484,30 @@ class Poisson(object):
         def sigma_fun():
             num = K*E_v_n_aux + self.eps_r*self.j_conv
             den = K + (self.T_h/self.Chi)*expFun()
-            return num/den
+            return r*num/den
+
+        # Define the relative permittivity.
+
+        class relative_perm(fn.UserExpression):
+            def __init__(self, markers, subdomain_ids, relative, **kwargs):
+                super().__init__(**kwargs)
+                self.markers = markers
+                self.subdomain_ids = subdomain_ids
+                self.relative = relative
+
+            def eval_cell(self, values, x, cell):
+                if self.markers[cell.index] == self.subdomain_ids['Vacuum']:
+                    values[0] = 1.
+                else:
+                    values[0] = self.relative
+
+        rel_perm = relative_perm(self.subdomains, self.subdomains_ids, relative=self.eps_r, degree=0)
 
         # Define the variational form.
-        vacuum_int = r*fn.inner(fn.grad(phi), fn.grad(v))*self.dx(self.subdomains_ids['Vacuum'])
-        liquid_int = self.eps_r*r*fn.inner(fn.grad(phi), fn.grad(v))*self.dx(self.subdomains_ids['Liquid'])
+        # vacuum_int = r*fn.inner(fn.grad(phi), fn.grad(v))*self.dx(self.subdomains_ids['Vacuum'])
+        # liquid_int = self.eps_r*r*fn.inner(fn.grad(phi), fn.grad(v))*self.dx(self.subdomains_ids['Liquid'])
 
-        F = [vacuum_int + liquid_int - r*sigma("-")*v("-")*self.dS,
+        F = [r*rel_perm*fn.inner(fn.grad(phi), fn.grad(v))*self.dx - r*sigma("-")*v("-")*self.dS,
              r*sigma_fun()*l("-")*self.dS - r*sigma("-")*l("-")*self.dS]
 
         J = mp.block_derivative(F, phisigma, dphisigma)
@@ -520,6 +537,7 @@ class Poisson(object):
             iteration.
             """
             phiv, phil, sigma_init = self.solve_initial_problem()
+            # phi_init = self.solve_initial_problem_v2()
             phi.assign(phiv)
             sigma.assign(sigma_init)
         else:
@@ -635,6 +653,48 @@ class Poisson(object):
         (phiv, phil, sigma) = sol.block_split()
 
         return phiv, phil, sigma
+
+    def solve_initial_problem_v2(self):
+        V = fn.FunctionSpace(self.mesh, 'Lagrange', 2)
+
+        # Define test and trial functions.
+        v = fn.TestFunction(V)
+        u = fn.TrialFunction(V)
+
+        # Define radial coordinates.
+        r = fn.SpatialCoordinate(self.mesh)[0]
+
+        # Define the relative permittivity.
+
+        class relative_perm(fn.UserExpression):
+            def __init__(self, markers, subdomain_ids, **kwargs):
+                super().__init__(**kwargs)
+                self.markers = markers
+                self.subdomain_ids = subdomain_ids
+
+            def eval_cell(self, values, x, cell):
+                if self.markers[cell.index] == self.subdomain_ids['Vacuum']:
+                    values[0] = 1.
+                else:
+                    values[0] = 10.
+
+        rel_perm = relative_perm(self.subdomains, self.subdomains_ids, degree=0)
+
+        # Define the variational form.
+        a = r*rel_perm*fn.inner(fn.grad(u), fn.grad(v))*self.dx
+        L = fn.Constant(0.)*v*self.dx
+
+        # Define the boundary conditions.
+        bc1 = fn.DirichletBC(V, fn.Constant(0.), self.boundaries, self.boundaries_ids['Bottom_Wall'])
+        bc4 = fn.DirichletBC(V, fn.Constant(-10.), self.boundaries, self.boundaries_ids['Top_Wall'])
+        bcs = [bc1, bc4]
+
+        # Solve the problem.
+        init_phi = fn.Function(V)
+        fn.solve(a == L, init_phi, bcs)
+
+        return Poisson.block_project(init_phi, self.mesh, self.restrictions_dict['vacuum_rtc'], self.subdomains,
+                                     self.subdomains_ids['Vacuum'], space_type='scalar')
 
     @staticmethod
     def check_solver_options():
@@ -811,7 +871,7 @@ class Poisson(object):
         specified subdomain using the block_project method.
         Parameters
         ----------
-        subdomain_id : int
+        subdomain_id : string
             Subdomain identification number.
         Returns
         -------
@@ -819,7 +879,7 @@ class Poisson(object):
             Dolfin/FEniCS function containing the electric field information.
         """
         if subdomain_id == 'Vacuum' or subdomain_id == 'vacuum':
-            subdomain_id_num = self.subdomains_ids[subdomain_id]
+            subdomain_id_num = self.subdomains_ids[subdomain_id.capitalize()]
             rtc = self.restrictions_dict[subdomain_id.lower() + '_rtc']
             phi_sub = Poisson.block_project(self.phi, self.mesh, rtc, self.subdomains, subdomain_id_num,
                                             space_type='scalar')

@@ -19,6 +19,7 @@ class GMSHInterface(object):
         self.msh_filename = ''
         self.geo_filename = ''
         self.mesh_filename = ''
+        self.app = None  # Variable containing all the mesh details specified by the user.
 
         # Define the geometry and mesh object, as well as some of its properties.
         self.my_mesh = Mesh()
@@ -419,6 +420,37 @@ class GMSHInterface(object):
 
         return subdomains_ids
 
+    def reset_geom_params(self):
+        """
+        Reset the necessary parameters to create a new geometry.
+        Returns:
+
+        """
+        # Reset the mesh object.
+        self.my_mesh = Mesh()
+
+        # Initialize physical groups and geometry parameters.
+        self.p_dict = dict()  # Create a dictionary containing all the points of the geometry.
+        self.interface_points = dict()  # Dictionary that will isolate the points conforming the interface.
+        self.list_points_interface = list()
+        self.refinement_points_tip = None  # List containing the refinement points of the tip.
+        self.refinement_points_knee = None  # List containing the refinement points of the knee.
+        self.point_num = 1  # Number of points counter.
+        self.key = ''  # Variable creating the dicts of the self.p_dict variable.
+        self.interface_end_point = None  # Locator of the last point defining the interface
+        self.interface_end_point_z = None  # Locator of the z coordinate of the last point defining the interface
+        self.inlet = Entity.PhysicalGroup(name='Inlet', mesh=self.my_mesh)
+        self.twr = Entity.PhysicalGroup(name='Tube_Wall_R', mesh=self.my_mesh)
+        self.twl = Entity.PhysicalGroup(name='Tube_Wall_L', mesh=self.my_mesh)
+        self.bw = Entity.PhysicalGroup(name='Bottom_Wall', mesh=self.my_mesh)
+        self.lwr = Entity.PhysicalGroup(name='Lateral_Wall_R', mesh=self.my_mesh)
+        self.tw = Entity.PhysicalGroup(name='Top_Wall', mesh=self.my_mesh)
+        self.lwl = Entity.PhysicalGroup(name='Lateral_Wall_L', mesh=self.my_mesh)
+        self.interface = Entity.PhysicalGroup(name='Interface', mesh=self.my_mesh)
+
+        self.vacuum = Entity.PhysicalGroup(name='Vacuum', mesh=self.my_mesh)
+        self.liquid = Entity.PhysicalGroup(name='Liquid', mesh=self.my_mesh)
+
     def geometry_generator(self, interface_fun=None, interface_fun_r=None, interface_fun_z=None, factor=10, **kwargs):
         """
         Generate the geometry given some parameters.
@@ -468,7 +500,8 @@ class GMSHInterface(object):
         self.interface_fun_z = interface_fun_z
 
         # Detect which is the independent variable in the string.
-        if isinstance((self.interface_fun, self.interface_fun_r, self.interface_fun_z), str):
+        if isinstance(self.interface_fun, str) or isinstance(self.interface_fun_r, str) or \
+                isinstance(self.interface_fun_z, str):
             if self.interface_fun is not None:
                 ind_var = GMSHInterface.get_independent_var_from_equation(interface_fun)
                 if kwargs.get('angle_unit') == 'degrees':
@@ -485,18 +518,22 @@ class GMSHInterface(object):
         # %% STEP 1: DEFINE THE POINTS OF THE GEOMETRY.
         # MENISCUS POINTS DEFINITION.
         if interface_fun is not None:
-            r_arr = np.sort(kwargs.get('r'))[::-1]
+            r_arr = np.sort(kwargs.get('r'))[::-1]  # Sort the r array from higher to lower.
             z_arr = np.array([])
             for r_val in r_arr:
+                self.key = 'p' + str(self.point_num)
                 if isinstance(interface_fun, str):
                     interface_fun = self.interface_fun
-                    self.key = 'p' + str(self.point_num)
                     interface_fun = GMSHInterface.replace_ind_var(interface_fun, ind_var, str(r_val))
                     z_val = nsp.eval(interface_fun)
                 else:
-                    z_val = interface_fun(r_val)
+                    try:  # In case the user introduces a Scipy solution object, we need to specify which sol to use.
+                        z_val = interface_fun(r_val)[0]
+                    except TypeError:  # In case the user introduces a standard function.
+                        z_val = interface_fun(r_val)
                 if r_val != 1:
                     self.p_dict[self.key] = Entity.Point([r_val, z_val, 0], mesh=self.my_mesh)
+                    self.interface_points[self.key] = Entity.Point([r_val, z_val, 0], mesh=self.my_mesh)
                     self.point_num += 1
                     z_arr = np.append(z_arr, z_val)
             r_arr = r_arr[1:]
@@ -521,9 +558,9 @@ class GMSHInterface(object):
                     r_arr = np.append(r_arr, r)
                     z_arr = np.append(z_arr, z)
                     self.p_dict[self.key] = Entity.Point([r, z, 0], mesh=self.my_mesh)
+                    self.interface_points[self.key] = Entity.Point([r, z, 0], mesh=self.my_mesh)
                     self.point_num += 1
 
-        self.interface_points = self.p_dict  # Save the points of the interface in another dict.
         self.list_points_interface = list(self.interface_points.values())[::-1]
         self.interface_end_point = self.p_dict[self.key]
         self.interface_end_point_z = self.interface_end_point.xyz[1]
@@ -549,14 +586,14 @@ class GMSHInterface(object):
 
         # BOTTOM WALL POINTS DEFINITION.
         # Get the number of points of the interface and divide the radius of the tube by this number.
-        dist = 1/len(r_arr)
-        tot_dist = dist * 2
-
-        for i in np.arange(1, int(tot_dist/dist)+1):
-            subtract = (i-1)*dist
-            self.p_dict[self.key] = Entity.Point([1 + tot_dist - subtract, 0, 0], mesh=self.my_mesh)
-            self.point_num += 1
-            self.key = 'p' + str(self.point_num)
+        # dist = 1/len(r_arr) * 20
+        # tot_dist = dist
+        #
+        # for i in np.arange(1, int(tot_dist/dist)+1):
+        #     subtract = (i-1)*dist
+        #     self.p_dict[self.key] = Entity.Point([1 + tot_dist - subtract, 0, 0], mesh=self.my_mesh)
+        #     self.point_num += 1
+        #     self.key = 'p' + str(self.point_num)
 
         # Create the knee point.
         self.p_dict[self.key] = Entity.Point([1, 0, 0], mesh=self.my_mesh)
@@ -565,12 +602,12 @@ class GMSHInterface(object):
         self.key = 'p' + str(self.point_num)
 
         # TUBE WALL RIGHT POINTS DEFINITION.
-        self.p_dict[self.key] = Entity.Point([1, -dist,  0], mesh=self.my_mesh)
-        self.point_num += 1
-        self.key = 'p' + str(self.point_num)
-        self.p_dict[self.key] = Entity.Point([1, -tot_dist, 0], mesh=self.my_mesh)
-        self.point_num += 1
-        self.key = 'p' + str(self.point_num)
+        # self.p_dict[self.key] = Entity.Point([1, -dist,  0], mesh=self.my_mesh)
+        # self.point_num += 1
+        # self.key = 'p' + str(self.point_num)
+        # self.p_dict[self.key] = Entity.Point([1, -tot_dist, 0], mesh=self.my_mesh)
+        # self.point_num += 1
+        # self.key = 'p' + str(self.point_num)
         self.p_dict[self.key] = Entity.Point([1, -factor, 0], mesh=self.my_mesh)
         self.point_num += 1
         self.key = 'p' + str(self.point_num)
@@ -629,19 +666,33 @@ class GMSHInterface(object):
         liquid_surf = Entity.PlaneSurface([liquid_curveloop], mesh=self.my_mesh)
         self.liquid.addEntity(liquid_surf)
 
-    def mesh_generation(self):
+    def mesh_generation_noGUI(self, filename):
+        """
+        Generate the mesh from a .geo file without calling the Graphical User Interface (GUI). This method is useful
+        when the mesh details have already been defined or specified in some way. In particular, this method will be
+        used when generating the geometries from the solutions of the iterative process.
+        Returns:
+            The path of the mesh (.msh) file.
+        """
+
+        self.geo_filename = create_mesh(self.my_mesh, self.app, filename)
+        self.mesh_filename = write_mesh(self.geo_filename)
+
+        return self.mesh_filename
+
+    def mesh_generation_GUI(self):
         """
         Generate the mesh file from the .geo file by calling a Graphical User Interface (GUI), in which the user is
         able to define some other parameters of the mesh.
         Returns:
-            The path of the mesh file.
+            The path of the mesh (.msh) file.
         """
 
         # Initialize the GUI to get user's inputs.
-        app = run_app(self.my_mesh)
+        self.app = run_app(self.my_mesh)
 
         # Create the mesh.
-        self.geo_filename = create_mesh(self.my_mesh, app, self.filename)
+        self.geo_filename = create_mesh(self.my_mesh, self.app, self.filename)
         self.mesh_filename = write_mesh(self.geo_filename)
         return self.mesh_filename
 
@@ -676,4 +727,4 @@ if __name__ == '__main__':
 
     class_call.geometry_generator(interface_fun_r=r_fun, interface_fun_z=z_fun,
                                   independent_param=s_arr)
-    class_call.mesh_generation()
+    class_call.mesh_generation_GUI()
