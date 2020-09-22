@@ -273,6 +273,8 @@ sigma_arr = PostProcessing.extract_from_function(Electrostatics.sigma, coords_mi
 E_l_r, E_l_z = Poisson.get_liquid_electric_field(mesh=mesh, subdomain_data=boundaries,
                                                  boundary_id=boundaries_ids['Interface'], normal_liquid=E_l_n_array,
                                                  tangential_liquid=E_t_array)
+E_l_r.append(E_l_r[-1])
+E_l_z.append(E_l_z[-1])
 
 # Calculate the non-dimensional evaporated charge and current.
 j_ev = (Electrostatics.sigma*T_h)/(LiquidInps.eps_r*Chi) * fn.exp(-Phi/T_h * (
@@ -412,8 +414,6 @@ plotpy.lineplot([(r_mids, theta_fun_arr)],
                 fig_title='Normal component of the hydraulic stress at the meniscus')
 
 # %% SURFACE UPDATE.
-E_l_r.append(E_l_r[-1])
-E_l_z.append(E_l_z[-1])
 
 
 def get_derivatives(independent_param, fun):
@@ -588,6 +588,9 @@ plotpy.lineplot([(r_plot, y_plot, 'First iteration'), (r_nodes, z_nodes, 'Initia
 
 # %% WHAT CONVERGES.
 """
+All computations have been carried out using 0.01 as a characteristic length from curvature and 1.25 as characteristic
+length factor.
+
 -> Taylor cone: - Frontal Delaunay, max size: 0.06, variable_parameter = 24.89523033034176
                 - Frontal Delaunay, max.size: 0.05, variable parameter = 24.89523033034176
                 - Frontal Delaunay, max size: 0.04, variable_parameter = 24.89523033034176
@@ -609,6 +612,11 @@ plotpy.lineplot([(r_plot, y_plot, 'First iteration'), (r_nodes, z_nodes, 'Initia
 # %% TESTS.
 # Test how to introduce the scipy.sol function into the geometry builder.
 # Create a test array of values of r.
+""" One could think to simply introduce the nodes created by the bvp solver into the geometry generator. While this
+could work in some cases, it has been proven that introducing these nodes (from sol.x) leads to errors in GMSH because
+of the small distances between nodes. Thus, it is recommended to create equally spaced nodes with a linspace method. One
+can use the length of the sol.x array for a reference on the number of points to use.
+"""
 r_test = np.linspace(0, 1, len(sol.x))
 
 # Reset required parameters to avoid the class initialization.
