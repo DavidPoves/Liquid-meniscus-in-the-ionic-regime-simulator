@@ -617,12 +617,6 @@ class GMSHInterface(object):
         self.key = 'p' + str(self.point_num)
 
         # TUBE WALL RIGHT POINTS DEFINITION.
-        # self.p_dict[self.key] = Entity.Point([1, -dist,  0], mesh=self.my_mesh)
-        # self.point_num += 1
-        # self.key = 'p' + str(self.point_num)
-        # self.p_dict[self.key] = Entity.Point([1, -tot_dist, 0], mesh=self.my_mesh)
-        # self.point_num += 1
-        # self.key = 'p' + str(self.point_num)
         self.p_dict[self.key] = Entity.Point([1, -factor, 0], mesh=self.my_mesh)
         self.point_num += 1
         self.key = 'p' + str(self.point_num)
