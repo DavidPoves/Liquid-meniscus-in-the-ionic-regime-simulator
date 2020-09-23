@@ -35,8 +35,7 @@ used in this part.
 
 
 class Poisson(object):
-    def __init__(self, inputs, boundary_conditions, msh_filepath, restrictionspath, checkspath,
-                 boundary_conditions_init=None, liquid_inps=None):
+    def __init__(self, inputs, boundary_conditions, msh_filepath, restrictionspath, checkspath):
         """
         Initialize the Poisson solver with the required inputs. The process to really solve the electrostatics
         problem is simple: Load the initial arguments when this class is initialized, load the mesh by calling the
@@ -62,9 +61,6 @@ class Poisson(object):
             msh_filepath: String containing the path of the mesh.
             restrictionspath: String containing the path of the restrictions file.
             checkspath: String with the path of the folder where the checks file will be stored.
-            boundary_conditions_init: Boundary conditions of the initial problem, used as an initial guess for the
-            main iterative process.
-            liquid_inps: Liquid Inputs, which is an object loaded from the Input_Parameters.py file.
         """
 
         self.filename = msh_filepath.split('/')[-1]
@@ -74,7 +70,6 @@ class Poisson(object):
         self.checkspath = checkspath
         self.boundary_conditions = boundary_conditions
         self.geo_filepath = self.mesh_folder_path + '/' + self.filename.split('.')[0] + '.geo'
-        self.boundary_conditions_init = boundary_conditions_init
 
         # Unpack iterable objects.
         self.eps_r = inputs['Relative_perm']
@@ -84,7 +79,6 @@ class Poisson(object):
         self.Chi = inputs['Chi']
         self.B = inputs['B']
         self.j_conv = inputs['Convection charge']
-        self.liquid_inps = liquid_inps
 
     def check_mesh(self):
         """
@@ -244,7 +238,7 @@ class Poisson(object):
         self.subdomains = df.MeshFunction('size_t', self.mesh, filepath)
         self.subdomains_ids = GMSHInterface.get_subdomains_ids(self.geo_filepath)
 
-        return self.subdomains
+        return self.subdomains, self.subdomains_ids
 
     def get_measures(self):
         """
@@ -385,7 +379,7 @@ class Poisson(object):
         -------
         phi : dolfin.function.function.Function
             Dolfin function containing the potential solution.
-        sigma : dolfin.function.function.Function
+        surface_charge_density : dolfin.function.function.Function
             Dolfin function conataining the surface charge density solution.
         """
 
@@ -404,17 +398,8 @@ class Poisson(object):
             if isinstance(self.j_conv, (int, float)):
                 self.j_conv = fn.Constant(float(self.j_conv))
 
-        # Define default solver paramaters.
-        default_solver_parameters = {"snes_solver": {"linear_solver": "mumps",
-                                                     "maximum_iterations": 100,
-                                                     "report": True,
-                                                     "error_on_nonconvergence": True,
-                                                     'line_search': 'bt',
-                                                     'relative_tolerance': 1e-4}}
-        kwargs.setdefault('solver_parameters', default_solver_parameters)
-
         # Extract the solver parameters.
-        solver_parameters = kwargs.get('solver_parameters')
+        solver_parameters = kwargs.get('electrostatics_solver_settings')
 
         # --------------------------------------------------------------------
         # FUNCTION SPACES #
@@ -531,7 +516,7 @@ class Poisson(object):
         # SOLVE #
         # --------------------------------------------------------------------
         # Define and assign the initial guesses.
-        if kwargs.get('Previous potential') is None:
+        if kwargs.get('initial_potential') is None:
             """
             Check if the user is introducing a potential from a previous
             iteration.
@@ -541,8 +526,8 @@ class Poisson(object):
             phi.assign(phiv)
             sigma.assign(sigma_init)
         else:
-            phi.assign(kwargs.get('Initial Potential'))
-            sigma.assign(kwargs.get('sigma'))
+            phi.assign(kwargs.get('initial_potential'))
+            sigma.assign(kwargs.get('initial_surface_charge_density'))
 
         # Apply the initial guesses to the main function.
         phisigma.apply('from subfunctions')
@@ -605,7 +590,7 @@ class Poisson(object):
         # Define auxiliary terms.
         r = fn.SpatialCoordinate(self.mesh)[0]
 
-        #                                       phiv                                                         phil                              sigma             #
+        #                                       phiv                                                         phil                                sigma             #
         aa = [[r*fn.inner(fn.grad(phiv), fn.grad(v1))*self.dx(self.subdomains_ids['Vacuum'])  , 0                                       , 0                        ],  # Trial Function v1
               [0                                                                        , phil*v2*self.dx(self.subdomains_ids['Liquid']), 0                        ],  # Trial function v2
               [0                                                                        , 0                                       , sigma("+")*l("+")*self.dS]]  # Trial function l
@@ -959,7 +944,7 @@ class Poisson(object):
             Dolfin/FEniCS function containing the information of the electric
             field.
         coords : array like
-            Array contaning the coodinates (in this case, of the points
+            Array containing the coordinates (in this case, of the points
             forming the interface). This list/array must have the following
             form: coords = [r_coords, z_coords], where r_coords and z_coords
             are the lists/arrays containing the radial and axial coordinates,
@@ -987,5 +972,13 @@ class Poisson(object):
         return E_r, E_z
 
     def get_nd_current(self, j_ev_nd):
+        """
+        Get the current emitted through the interface by evaluating an integral, as indicated in Ximo's thesis p.46
+        Args:
+            j_ev_nd: FEniCS function of the non dimensional evaporated current through interface.
+
+        Returns:
+            Non-dimensional emitted current.
+        """
 
         return fn.assemble(j_ev_nd*self.dS(self.boundaries_ids['Interface']))

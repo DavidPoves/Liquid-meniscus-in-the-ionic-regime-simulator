@@ -7,8 +7,8 @@ import numpy as np
 
 
 class PostProcessing(object):
-    def __init__(self, x_data, y_data):
-        return None
+    def __init__(self):
+        pass
 
     @staticmethod
     def smooth_data(*args, window_length=801, polyorder=3):
@@ -274,7 +274,9 @@ class PostProcessing(object):
     @staticmethod
     def extract_from_function(fun, coords):
         """
-        Extract the values of a given function at the desired coordinates.
+        Extract the values of a given function at the desired coordinates. It can handle both scalar and vectorial
+        functions. For the latter case, each of the components (radial and axial) of the vector will be extracted into
+        different arrays.
 
         Parameters
         ----------
@@ -301,10 +303,25 @@ class PostProcessing(object):
         z_coords = coords[1]
         zip_coords = zip(r_coords, z_coords)
 
+        # Extract the evaluation of the function, depending on which type of function the user has introduced.
         fun_arr = []
+        radial_arr = np.array([])
+        axial_arr = np.array([])
         for r, z in zip_coords:
-            fun_arr.append(fun([r, z]))
-        return np.array(fun_arr)
+            fun_eval = fun([r, z])  # Variable containing the function evaluation.
+            if isinstance(fun_eval, (np.float64, float)):  # fun_eval will be a float if the function is scalar.
+                fun_arr.append(fun_eval)
+            elif isinstance(fun_eval, np.ndarray):  # fun_eval will be an array if the introduced function is vectorial.
+                radial, axial = fun_eval  # Split the components of the vector resulting from the function evaluation.
+                radial_arr = np.append(radial_arr, radial)
+                axial_arr = np.append(axial_arr, axial)
+        fun_arr = np.array(fun_arr)
+
+        # Return statement will depend on the type of function.
+        if radial_arr.size == 0:  # A scalar function was introduced.
+            return fun_arr
+        elif fun_arr.size == 0:  # A vector function was introduced.
+            return radial_arr, axial_arr
 
     @staticmethod
     def get_midpoints_from_boundary(boundaries, boundary_id):

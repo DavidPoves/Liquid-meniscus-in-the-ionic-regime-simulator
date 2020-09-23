@@ -50,10 +50,8 @@ Studies on Ionic Liquids.
 """
 All the available fonts for matplotlib:
 https://matplotlib.org/1.4.0/users/usetex.html
-
 To see a full list of background styles check the following code:
 plt.style.available
-
 Notice there are some background styles where linewidth of the grid cannot be
 controlled. In that case, this parameter will be ignored
 All latex font styles can be found at:
@@ -78,8 +76,7 @@ plotpy = PlotPy(latex=True, fontsize=12., figsize=(12., 7.),
 
 
 # %% IMPORT AND DECLARE THE INITIAL DATA.
-LiquidInps = Liquid_Properties(relative_permittivity=10)
-LiquidInps.EMIBF4()  # Load EMIBF4 liquid properties.
+LiquidInps = Liquid_Properties('EMIBF4', relative_permittivity=10)
 
 T_0 = 298.15  # Reference temperature [K]
 
@@ -152,7 +149,6 @@ inputs = {'Relative_perm': LiquidInps.eps_r,
 # Define the boundary conditions.
 """
 Notice the structure of the boundary conditions:
-
     1. Boundary name as in the .geo file.
     2. The type of boundary condition (Dirichlet or Neumann).
     3. A list where the first value is the value of the bc and the second
@@ -178,7 +174,7 @@ bcs_elec_init = {'Top_Wall': {'Dirichlet': [top_potential, 'vacuum']},
 
 # Initialize the Electrostatics class, loading constant parameters.
 Electrostatics = Poisson(inputs, boundary_conditions_elec, filepath, restrictions_folder_path, checks_folder_path,
-                         boundary_conditions_init=bcs_elec_init, liquid_inps=LiquidInps)
+                         boundary_conditions_init=bcs_elec_init)
 
 # Get the mesh object.
 mesh = Electrostatics.get_mesh()
@@ -235,7 +231,6 @@ available parameters for a parameter set. These parameter sets are:
     - lu-solver.
 Each of them contain different parameters which can be modified by the user.
 An example of this is given below.
-
 It is strongly recommended to use the backtracking (bt) line search option,
 which improves robustness and takes care of NaNs. More info about this
 technique at:
@@ -302,8 +297,8 @@ plotpy.lineplot([(r_nodes, E_v_r, r'Radial ($\hat{r}$)'),
                 fig_title='Components of the electric field at vacuum',
                 legend_title='Field Components')
 
-plotpy.lineplot([(r_mids, E_l_r, r'Radial ($\hat{r}$)'),
-                 (r_mids, E_l_z, r'Axial ($\hat{z}$)')],
+plotpy.lineplot([(r_nodes, E_l_r, r'Radial ($\hat{r}$)'),
+                 (r_nodes, E_l_z, r'Axial ($\hat{z}$)')],
                 xlabel=x_label, ylabel=y_label,
                 fig_title='Components of the electric field at liquid',
                 legend_title='Field Components')
@@ -421,16 +416,13 @@ def get_derivatives(independent_param, fun):
     Get the derivatives of a given function. To do, the Sympy library is used. Sympy is quite useful for symbolic
     mathematical operations, and derivatives of a given function (using their own functions) is as easy as calling a
     simple function.
-
     Computation of the derivatives have been checked using WolframAlpha.
     Args:
         independent_param: string. The independent parameter with respect which the derivatives will be computed.
         fun: string. The function to be derived. This must contain only a single independent parameter and any angle
         should be introduced in radians.
-
     Returns:
         Lambda functions of the first and second derivatives, only as a function of the independent parameter.
-
     """
     # Define a Sympy symbol.
     """ Defining a Sympy symbol will be useful to tell the function with respect to which parameter should the function
@@ -590,14 +582,12 @@ plotpy.lineplot([(r_plot, y_plot, 'First iteration'), (r_nodes, z_nodes, 'Initia
 """
 All computations have been carried out using 0.01 as a characteristic length from curvature and 1.25 as characteristic
 length factor.
-
 -> Taylor cone: - Frontal Delaunay, max size: 0.06, variable_parameter = 24.89523033034176
                 - Frontal Delaunay, max.size: 0.05, variable parameter = 24.89523033034176
                 - Frontal Delaunay, max size: 0.04, variable_parameter = 24.89523033034176
                 - Automatic, max.size: 0.1, variable parameter = 24.89523033034176
                 - Automatic, max.size: 0.2, variable parameter = 24.89523033034176
                 - Automatic, max.size: 0.3, variable parameter = 24.89523033034176
-
 -> Cosine:      - Frontal Delaunay, max size: 0.06
                 - Frontal Delaunay, max size: 0.1
                 - Frontal Delaunay, max size: 0.03
@@ -605,7 +595,6 @@ length factor.
                 - Automatic, max size 0.03
                 - Automatic, max size 0.05
     All cosine computations were done with an initial height of 0.5
-
 -> Parabolic:   - Frontal Delaunay, max size: 0.03
 """
 
