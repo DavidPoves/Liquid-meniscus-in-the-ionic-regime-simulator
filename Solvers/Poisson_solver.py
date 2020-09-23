@@ -332,8 +332,8 @@ class Poisson(object):
         ----------
         **kwargs : dict
             Accepted kwargs are:
-                - solver_parameters: The user may define its own solver
-                parameters. They must be defined as follows:
+                - electrostatics_solver_settings: The user may define its own solver parameters. They must be defined
+                as follows:
                 solver_parameters = {"snes_solver": {"linear_solver": "mumps",
                                       "maximum_iterations": 50,
                                       "report": True,
@@ -365,6 +365,10 @@ class Poisson(object):
                 All this options, as well as all the other options available
                 can be consulted by calling the method
                 Poisson.check_solver_options().
+                - initial_potential: Dolfin/FEniCS function which will be used as an initial guess on the iterative
+                    process. This must be introduced along with kwarg initial_surface_charge_density. Optional.
+                - initial_surface_charge_density: Dolfin/FEniCS function which will be used as an initial guess on the
+                    iterative process. This must be introduced along with kwarg initial_potential. Optional.
         Raises
         ------
         TypeError

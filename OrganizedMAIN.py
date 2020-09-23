@@ -448,7 +448,7 @@ class ElectrostaticsWrapper(PlottingSettings):
         # Define the boundary conditions.
         self.boundary_conditions = electrostatics_bcs
 
-        # Define default solver settings.
+        # Deal with kwargs.
         if kwargs.get('electrostatics_solver_settings') is None:
             self.solver_settings = {"snes_solver": {"linear_solver": "mumps",
                                                     "maximum_iterations": 200,
@@ -459,6 +459,8 @@ class ElectrostaticsWrapper(PlottingSettings):
         else:
             self.solver_settings = kwargs.get('electrostatics_solver_settings')
 
+        self.convection_charge = kwargs.get('convection_charge')
+
         # Define the inputs for the Electrostatics solver.
         self.inputs = {'Relative_perm': liquid_properties.eps_r,
                        'Non_dimensional_temperature': general_inputs.T_h,
@@ -466,7 +468,7 @@ class ElectrostaticsWrapper(PlottingSettings):
                        'Phi': general_inputs.Phi,
                        'B': general_inputs.B,
                        'Chi': general_inputs.Chi,
-                       'Convection charge': kwargs.get('convection_charge')}
+                       'Convection charge': self.convection_charge}
 
         # Preallocate all variables.
         self.class_caller = None
