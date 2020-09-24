@@ -1,4 +1,4 @@
-from OrganizedMAIN import MainWrapper
+from MAIN import MainWrapper
 import fenics as fn
 
 
