@@ -20,15 +20,15 @@ import fenics as fn
 import numpy as np
 import sympy as sp
 
-from Input_Parameters import Liquid_Properties
-from MainMenu import run_main_menu
-from Solvers.NS_Solver import Stokes
-from Solvers.Poisson_solver import Poisson
-from Tools.BVPInterface import BVPInterface
-from Geometry_scripts.GMSH_Interface import GMSHInterface
-from Tools.MeshConverter import msh2xml
-from Tools.PlotPy import PlotPy
-from Tools.PostProcessing import PostProcessing
+from simulator.Liquids import LiquidProperties
+from simulator.Menu_scripts.MainMenu import run_main_menu
+from simulator.Solvers.NS_Solver import Stokes
+from simulator.Solvers.Poisson_solver import Poisson
+from simulator.Tools.BVPInterface import BVPInterface
+from simulator.Geometry_scripts.GMSH_Interface import GMSHInterface
+from simulator.Tools.MeshConverter import msh2xml
+from simulator.Tools.PlotPy import PlotPy
+from simulator.Tools.PostProcessing import PostProcessing
 
 """
 This is the main script of the Bachelor Thesis:
@@ -73,7 +73,7 @@ plotpy = PlotPy(latex=True, fontsize=12., figsize=(12., 7.),
 
 
 # %% IMPORT AND DECLARE THE INITIAL DATA.
-LiquidInps = Liquid_Properties('EMIBF4', relative_permittivity=10)
+LiquidInps = LiquidProperties('EMIBF4', relative_permittivity=10)
 
 T_0 = 298.15  # Reference temperature [K]
 

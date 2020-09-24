@@ -3,10 +3,10 @@ import re
 import numpy as np
 from py2gmsh import Mesh, Entity
 
-from Tools.CreateMesh import create_mesh, write_mesh
-from Tools.CreateMesh import str_2_num
-from Tools.EvaluateString import NumericStringParser
-from Menu_scripts.MeshMenu import run_app
+from simulator.Tools.CreateMesh import create_mesh, write_mesh
+from simulator.Tools.CreateMesh import str_2_num
+from simulator.Tools.EvaluateString import NumericStringParser
+from simulator.Menu_scripts.MeshMenu import run_app
 
 
 class GMSHInterface(object):

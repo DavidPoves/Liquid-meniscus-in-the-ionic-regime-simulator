@@ -1,6 +1,6 @@
 import fenics as fn
 
-from Main_scripts.MAIN import MainWrapper
+from simulator.Main_scripts.MAIN import MainWrapper
 
 # Copyright (C) 2020- by David Poves Ros
 #
@@ -122,4 +122,4 @@ if __name__ == '__main__':
 	# Plot the solutions of the different simulations.
 	main.simulation_results.Electrostatics.plot_results(save_images=False, save_mat=False)
 	main.simulation_results.Stokes.plot_results(save_images=False, save_mat=False)
-	main.simulation_results.SurfaceUpdate.plot_results(save_images=True, save_mat=False)
+	main.simulation_results.SurfaceUpdate.plot_results(save_images=False, save_mat=False)

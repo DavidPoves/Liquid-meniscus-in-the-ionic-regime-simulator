@@ -20,14 +20,14 @@ import fenics as fn
 import matplotlib.pyplot as plt
 import numpy as np
 
-from Input_Parameters import Liquid_Properties
-from Menu_scripts.MainMenu import run_main_menu
-from Solvers.NS_Solver import Stokes as Stokes_sim
-from Solvers.Poisson_solver import Poisson
-from Solvers.SurfaceUpdate import SurfaceUpdate
-from Tools.MeshConverter import msh2xml
-from Tools.PlotPy import PlotPy
-from Tools.PostProcessing import PostProcessing
+from simulator.Liquids import LiquidProperties
+from simulator.Menu_scripts.MainMenu import run_main_menu
+from simulator.Solvers.NS_Solver import Stokes as Stokes_sim
+from simulator.Solvers.Poisson_solver import Poisson
+from simulator.Solvers.SurfaceUpdate import SurfaceUpdate
+from simulator.Tools.MeshConverter import msh2xml
+from simulator.Tools.PlotPy import PlotPy
+from simulator.Tools.PostProcessing import PostProcessing
 
 """
 This is the main script of the Bachelor Thesis:
@@ -64,7 +64,7 @@ class MainWrapper(object):
             - self.liquid_properties: Object containing all the information related with the physical properties of the
                 selected liquid. One may check at any time the chosen liquid by calling the
                 self.liquid_properties.liquid_used method. To check all the available data, please refer to the
-                Input_Parameters.py file, or call the dir(self.liquid_properties) function.
+                Liquids.py file, or call the dir(self.liquid_properties) function.
             - self.geometry_info: Object containing all the information regarding the generation of the .geo file. Here,
                 one may check the introduced interface function. For example, if the user has chosen a z(r) function,
                 we may check that the function was introduced properly by calling the self.geometry_info.interface_fun
@@ -144,8 +144,8 @@ class MainWrapper(object):
 
         # Load some default values to some of the kwargs.
         kwargs.setdefault('relative_permittivity', 10)
-        kwargs.setdefault('checks_folder_name', '../CHECKS')
-        kwargs.setdefault('restrictions_folder_name', '../RESTRICTIONS')
+        kwargs.setdefault('checks_folder_name', 'CHECKS')
+        kwargs.setdefault('restrictions_folder_name', 'RESTRICTIONS')
         kwargs.setdefault('convection_charge', 0)
         kwargs.setdefault('electrostatics_solver_settings', None)
         kwargs.setdefault('run_full_simulation', True)
@@ -163,7 +163,7 @@ class MainWrapper(object):
         self.plotting_settings = PlottingSettings(**kwargs)
 
         # Load the selected liquid properties.
-        self.liquid_properties = Liquid_Properties(liquid, relative_permittivity=kwargs.get('relative_permittivity'))
+        self.liquid_properties = LiquidProperties(liquid, relative_permittivity=kwargs.get('relative_permittivity'))
 
         # Create the geometry and the mesh with a GUI (Graphical User Interface).
         self.gui_info = FilePlacement.call_gui()
@@ -196,7 +196,7 @@ class UsefulFunctions(object):
 
     @staticmethod
     def check_available_liquids():
-        Liquid_Properties.check_available_liquids()
+        LiquidProperties.check_available_liquids()
 
 
 class FilePlacement(object):
@@ -375,7 +375,7 @@ class SimulationGeneralParameters(object):
         Load data that is used by all the simulations.
         Args:
             general_inputs: Initial inputs (the ones introduced initially by the user).
-            liquid_properties: Object obtained from the Liquid_Parameters class, which is located at Input_Parameters.py
+            liquid_properties: Object obtained from the Liquid_Parameters class, which is located at Liquids.py
         """
         # Load general parameters.
         self.B = general_inputs['B']  # Ratio of characteristic emission region r* to radius of the fluid channel r0.
@@ -437,7 +437,7 @@ class ElectrostaticsWrapper(PlottingSettings):
         simulation and plot all the obtained results.
         Args:
             general_inputs: Object obtained from the SimulationGeneralParameters class.
-            liquid_properties: Object obtained from the Liquid_Parameters class, which is located at Input_Parameters.py
+            liquid_properties: Object obtained from the Liquid_Parameters class, which is located at Liquids.py
             electrostatics_bcs: Dictionary containing the electrostatics boundary conditions.
             **kwargs: Used kwargs are:
                         - init_boundary_conditions_elec: Dictionary containing the boundary conditions for the initial
@@ -582,7 +582,7 @@ class ElectrostaticsWrapper(PlottingSettings):
         Extract all the important data generated from the electrostatics simulation.
         Args:
             general_inputs: Object containing the SimulationGeneralParameters class.
-            liquid_properties: Object obtained from the Liquid_Parameters class, which is located at Input_Parameters.py
+            liquid_properties: Object obtained from the Liquid_Parameters class, which is located at Liquids.py
 
         Returns:
 
@@ -708,7 +708,7 @@ class StokesWrapper(PlottingSettings):
         plot all the obtained results.
         Args:
             general_inputs: Object obtained from the SimulationGeneralParameters class.
-            liquid_properties: Object obtained from the Liquid_Parameters class, which is located at Input_Parameters.py
+            liquid_properties: Object obtained from the Liquid_Parameters class, which is located at Liquids.py
             stokes_bcs: Dictionary containing the Stokes boundary conditions.
             electrostatics_simulation: Object containing all the electrostatics simulation results. Obtained from
             the ElectrostaticsWrapper class.

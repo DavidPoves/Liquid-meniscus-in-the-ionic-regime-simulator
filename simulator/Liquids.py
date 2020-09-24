@@ -6,10 +6,8 @@ import numpy as np
 """
 
 """
-This module will be used to introduce the required inputs for the MAIN.py
-script. Among these inputs, the liquid characterstics are required, which will
-be obtained from Coffman's thesis or by any other web or book, which will be
-properly referenced.
+This module will be used to introduce the liquid properties inputs for the MAIN.py script. These properties will be
+obtained from Coffman's thesis or by any other web or book, which will be properly referenced.
 Most data can be found at: http://ILThermo.boulder.nist.gov/ILThermo/
 """
 
@@ -17,7 +15,7 @@ Most data can be found at: http://ILThermo.boulder.nist.gov/ILThermo/
 # %% GENERAL DATA.
 
 
-class Liquid_Properties(object):
+class LiquidProperties(object):
 
     def __init__(self, liquid, relative_permittivity=10):
         # Define general parameters.
@@ -66,7 +64,7 @@ class Liquid_Properties(object):
             solution in molecular liquids
             """
             self.cp_mol = 308.1  # [J/mol-K]
-            cp_mass_EMIBF4 = self.cp_mol / self.MW  # [J/kg-K]
+            # cp_mass_EMIBF4 = self.cp_mol / self.MW  # [J/kg-K]
 
             # Nominal Activation Energy (or solvation energy) of the liquid [eV]
             """

@@ -3,7 +3,7 @@ import fenics as fn
 import numpy as np
 from scipy.signal import savgol_filter
 
-from Tools.fitter_v2 import Fitter
+from simulator.Tools.fitter_v2 import Fitter
 
 
 class PostProcessing(object):
