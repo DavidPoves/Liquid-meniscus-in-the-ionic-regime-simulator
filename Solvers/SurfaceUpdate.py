@@ -7,7 +7,7 @@ from Tools.GMSH_Interface import GMSHInterface
 
 
 class SurfaceUpdate(object):
-	def __init__(self, main_class, beta=0.05):
+	def __init__(self, main_class, electrostatics_results, stokes_results, beta=0.05):
 		# Preallocate required parameters.
 		self.main_class = main_class
 		self.zprimeLambdified = None  # Function of the first derivative of the interface function.
@@ -26,6 +26,10 @@ class SurfaceUpdate(object):
 
 		# Initialize the BVP interface.
 		self.bvp_solver = BVP()
+
+		# Load necessary data.
+		self.electrostatics_data = electrostatics_results
+		self.stokes_data = stokes_results
 
 	@staticmethod
 	def get_derivatives(independent_param, fun):
@@ -74,14 +78,14 @@ class SurfaceUpdate(object):
 
 	def get_function_derivatives(self):
 		# Define which is the function of the interface.
-		if self.main_class.geom_data.geo_gen.interface_fun is None:
-			fun_surf = self.main_class.geom_data.geo_gen.interface_fun_z
-			r_param = self.main_class.geom_data.geo_gen.interface_fun_r
+		if self.main_class.geometry_info.interface_fun is None:
+			fun_surf = self.main_class.geometry_info.interface_fun_z
+			r_param = self.main_class.geometry_info.interface_fun_r
 			self.r_param = sp.sympify(r_param)  # Create a sympy expression.
-			self.ind_data = self.main_class.geom_data.base_data
+			self.ind_data = self.main_class.gui_info.geom_data.base_data
 		else:
-			fun_surf = self.main_class.geom_data.geo_gen.interface_fun
-			self.r_data = self.main_class.geom_data.base_data
+			fun_surf = self.main_class.geometry_info.interface_fun
+			self.r_data = self.main_class.gui_info.geom_data.base_data
 
 		# Get independent variable from equation.
 		self.ind_var = GMSHInterface.get_independent_var_from_equation(fun_surf)
@@ -111,7 +115,7 @@ class SurfaceUpdate(object):
 		else:  # when independent functions for r and z were defined.
 			self.ind_data = np.array([])
 			s = sp.Symbol('s')
-			for r in self.main_class.useful_data.r_nodes:
+			for r in self.main_class.general_inputs.r_nodes:
 				self.ind_data = np.append(self.ind_data, sp.solvers.solve(self.r_param - r, s)[0])
 			for num in self.ind_data:
 				self.n_k = np.append(self.n_k, (1 / (1 + self.zprimeLambdified(num) ** 2) ** 0.5) * np.array(
@@ -127,18 +131,18 @@ class SurfaceUpdate(object):
 
 	def compute_residuals(self):
 		# Unpack required classes.
-		Electrostatics = self.main_class.simulation_results.Electrostatics
-		Stokes_sim = self.main_class.simulation_results.Stokes
+		Electrostatics = self.electrostatics_data
+		Stokes_sim = self.stokes_data
 
 		# Extract required quantities from the classes.
-		r_nodes = self.main_class.useful_data.r_nodes
-		z_nodes = self.main_class.useful_data.z_nodes
+		r_nodes = self.main_class.general_inputs.r_nodes
+		z_nodes = self.main_class.general_inputs.z_nodes
 
-		Lambda = Electrostatics.Lambda
-		Ca = Stokes_sim.Ca
-		C_R = Stokes_sim.C_R
-		B = Electrostatics.B
-		T_h = Electrostatics.T_h
+		Lambda = self.main_class.general_inputs.Lambda
+		Ca = Stokes_sim.Capillary
+		C_R = self.main_class.general_inputs.C_R
+		B = self.main_class.general_inputs.B
+		T_h = self.main_class.general_inputs.T_h
 		I_h = Electrostatics.emitted_current
 		E_v_r = Electrostatics.radial_component_vacuum
 		E_v_z = Electrostatics.axial_component_vacuum
@@ -149,8 +153,8 @@ class SurfaceUpdate(object):
 		Q = fn.FunctionSpace(Electrostatics.mesh, 'DG', 0)
 
 		# Define the required derivatives of the velocity.
-		ux = fn.project(Stokes_sim.u.sub(0).dx(0), Q)  # Derivative of radial component of u wrt the radial coordinate.
-		uz = fn.project(Stokes_sim.u.sub(1).dx(1), Q)  # Derivative of axial component of u wrt the axial coordinate.
+		ux = fn.project(Stokes_sim.velocity_field.sub(0).dx(0), Q)  # Derivative of radial component of u wrt the radial
+		uz = fn.project(Stokes_sim.velocity_field.sub(1).dx(1), Q)  # Derivative of axial component of u wrt the axial.
 
 		# Compute the residuals following the computations from Ximo's thesis.
 		""" Notice that residuals will be evaluated at the nodes that are defined on the interface.
@@ -159,17 +163,19 @@ class SurfaceUpdate(object):
 		self.residuals = np.array([])
 		for r_coord, z_coord in zip(r_nodes, z_nodes):
 			a_diff = E_v_r[counter] ** 2 - E_v_z[counter] ** 2 - \
-			         Stokes_sim.eps_r * (E_l_r[counter] ** 2 - E_l_z[counter] ** 2) + \
-			         Stokes_sim.p_star([r_coord, z_coord]) - I_h * C_R - \
-			         ((Stokes_sim.eps_r * Ca * np.sqrt(B)) / (1 + Lambda * (T_h - 1))) * (2 * ux([r_coord, z_coord]))
+			         self.main_class.liquid_properties.eps_r * (E_l_r[counter] ** 2 - E_l_z[counter] ** 2) + \
+			         Stokes_sim.class_caller.p_star([r_coord, z_coord]) - I_h * C_R - \
+			         ((self.main_class.liquid_properties.eps_r * Ca * np.sqrt(B)) / (1 + Lambda * (T_h - 1))) * (
+					         2 * ux([r_coord, z_coord]))
 			b_diff = 2 * E_v_r[counter] * E_v_z[counter] - \
-			         2 * Stokes_sim.eps_r * E_l_r[counter] * E_l_z[counter] - \
-			         ((Stokes_sim.eps_r * Ca * np.sqrt(B)) / (1 + Lambda * (T_h - 1))) * (ux([r_coord, z_coord]) +
-			                                                                              uz([r_coord, z_coord]))
+			         2 * self.main_class.liquid_properties.eps_r * E_l_r[counter] * E_l_z[counter] - \
+			         ((self.main_class.liquid_properties.eps_r * Ca * np.sqrt(B)) / (1 + Lambda * (T_h - 1))) * \
+			         (ux([r_coord, z_coord]) + uz([r_coord, z_coord]))
 			c_diff = E_v_z[counter] ** 2 - E_v_r[counter] ** 2 - \
-			         Stokes_sim.eps_r * (E_l_z[counter] ** 2 - E_l_r[counter] ** 2) + \
-			         Stokes_sim.p_star([r_coord, z_coord]) - I_h * C_R - \
-			         ((Stokes_sim.eps_r * Ca * np.sqrt(B)) / (1 + Lambda * (T_h - 1))) * (2 * uz([r_coord, z_coord]))
+			         self.main_class.liquid_properties.eps_r * (E_l_z[counter] ** 2 - E_l_r[counter] ** 2) + \
+			         Stokes_sim.class_caller.p_star([r_coord, z_coord]) - I_h * C_R - \
+			         ((self.main_class.liquid_properties.eps_r * Ca * np.sqrt(B)) / (1 + Lambda * (T_h - 1))) * (
+					         2 * uz([r_coord, z_coord]))
 
 			# Build the difference tensor.
 			diff_tensor = np.array([[a_diff, b_diff],
@@ -199,6 +205,9 @@ class SurfaceUpdate(object):
 
 		# Get auxiliary terms for the computation of the residuals.
 		self.get_aux_terms()
+
+		# Compute the residuals.
+		self.compute_residuals()
 
 		# Compute surface tension stress tensor for the next iteration.
 		self.get_next_surf_tension_stress_tensor()
@@ -232,5 +241,3 @@ class SurfaceUpdate(object):
 
 		# Run the solver.
 		self.sol = self.bvp_solver.solve()
-
-		return self.sol

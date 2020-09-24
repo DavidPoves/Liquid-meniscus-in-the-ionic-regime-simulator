@@ -18,6 +18,7 @@ import os
 
 from Solvers.Poisson_solver import Poisson
 from Solvers.NS_Solver import Stokes as Stokes_sim
+from Solvers.SurfaceUpdate import SurfaceUpdate
 
 import fenics as fn
 import numpy as np
@@ -27,7 +28,6 @@ from Input_Parameters import Liquid_Properties
 from Tools.PlotPy import PlotPy
 from Tools.PostProcessing import PostProcessing
 from Tools.MeshConverter import msh2xml
-from Tools.SurfaceUpdate import SurfaceUpdate
 
 from MainMenu import run_main_menu
 
@@ -139,6 +139,10 @@ class MainWrapper(object):
                         density from another guess. This parameter will be used as an initial guess for the solver of
                         the electrostatics. The initial_potential must be also introduced if this kwarg is introduced.
                         Optional, default is None.
+                    - surface_update_parameter: Float/integer indicating how aggressively the surface update should be
+                        performed. This is the beta term from Ximo thesis Methodology 1 on the Surface Update problem.
+                        Optional, default is 0.05
+                    - run_surface_update: Boolean which if True the code will only execute the Surface Update solver.
         """
 
         # Load some default values to some of the kwargs.
@@ -152,6 +156,8 @@ class MainWrapper(object):
         kwargs.setdefault('run_stokes_simulation', False)
         kwargs.setdefault('initial_potential', None)
         kwargs.setdefault('initial_surface_charge_density', None)
+        kwargs.setdefault('surface_update_parameter', 0.05)
+        kwargs.setdefault('run_surface_update', False)
 
         # Load useful functions.
         self.useful_functions = UsefulFunctions()
@@ -176,8 +182,7 @@ class MainWrapper(object):
         self.general_inputs = SimulationGeneralParameters(required_inputs, self.liquid_properties)
 
         # Initialize the Simulation class.
-        self.simulation_results = RunSimulation(self.general_inputs, self.liquid_properties, self.file_info,
-                                                electrostatics_bcs, stokes_bcs, **kwargs)
+        self.simulation_results = RunSimulation(self, electrostatics_bcs, stokes_bcs, **kwargs)
 
 
 class UsefulFunctions(object):
@@ -321,17 +326,17 @@ class PlottingSettings():
 
 
 class RunSimulation(object):
-    def __init__(self, general_inputs, liquid_properties, file_info, electrostatics_bcs, stokes_bcs, **kwargs):
+    def __init__(self, main_class, electrostatics_bcs, stokes_bcs, **kwargs):
         """
         Initialize the class containing all the processes related with the simulations executions.
         Args:
-            general_inputs: Object containing the SimulationGeneralParameters class.
-            liquid_properties: Object obtained from the Liquid_Parameters class, which is located at Input_Parameters.py
-            file_info: Object containing the FilePlacement class.
-            electrostatics_bcs: Dictionary containing the electrostatics boundary conditions.
-            stokes_bcs: Dictionary containing the Stokes boundary conditions.
-            **kwargs: All kwargs accepted by the ElectrostaticsWrapper class.
+            main_class: Object containing the main class methods and attributes.
+            **kwargs: All kwargs accepted by the ElectrostaticsWrapper and SurfaceUpdate class.
         """
+
+        liquid_properties = main_class.liquid_properties
+        general_inputs = main_class.general_inputs
+        file_info = main_class.file_info
 
         # Load some useful parameters for user visualization.
         self.liquid_used = liquid_properties.liquid_used
@@ -341,7 +346,7 @@ class RunSimulation(object):
 
         if kwargs.get('run_full_simulation'):
             # Run electrostatics simulation.
-            self.Electrostatics.run_full_simulation(file_info)
+            self.Electrostatics.run_full_simulation(file_info, **kwargs)
             self.Electrostatics.extract_all_info(general_inputs, liquid_properties)
 
             # Run Stokes simulation.
@@ -349,11 +354,22 @@ class RunSimulation(object):
             self.Stokes.run_solver(file_info)
             self.Stokes.extract_all_info(general_inputs)
 
+            # Run the surface update simulation.
+            self.SurfaceUpdate = SurfaceWrapper(main_class, self.Electrostatics, self.Stokes, **kwargs)
+            self.SurfaceUpdate.run_solver()
+            self.SurfaceUpdate.extract_all_info(general_inputs)
+
         elif kwargs.get('run_electrostatics_simulation'):
-            self.Electrostatics.run_full_simulation(file_info)
+            self.Electrostatics.run_solver(**kwargs)
+            self.Electrostatics.extract_all_info(general_inputs)
 
         elif kwargs.get('run_stokes_simulation'):
             self.Stokes.run_solver(file_info)
+            self.Stokes.extract_all_info(general_inputs)
+
+        elif kwargs.get('run_surface_update'):
+            self.SurfaceUpdate.run_solver()
+            self.SurfaceUpdate.extract_all_info(general_inputs)
 
 
 class SimulationGeneralParameters(object):
@@ -449,15 +465,14 @@ class ElectrostaticsWrapper(PlottingSettings):
         self.boundary_conditions = electrostatics_bcs
 
         # Deal with kwargs.
-        if kwargs.get('electrostatics_solver_settings') is None:
-            self.solver_settings = {"snes_solver": {"linear_solver": "mumps",
+        default_solver_settings = {"snes_solver": {"linear_solver": "mumps",
                                                     "maximum_iterations": 200,
                                                     "report": True,
                                                     "error_on_nonconvergence": True,
                                                     'line_search': 'bt',
                                                     'relative_tolerance': 1e-4}}
-        else:
-            self.solver_settings = kwargs.get('electrostatics_solver_settings')
+        kwargs.setdefault('electrostatics_solver_settings', default_solver_settings)
+        self.solver_settings = kwargs.get('electrostatics_solver_settings')
 
         self.convection_charge = kwargs.get('convection_charge')
 
@@ -563,7 +578,7 @@ class ElectrostaticsWrapper(PlottingSettings):
         Returns:
 
         """
-        self.class_caller.solve(electrostatics_solver_settings=self.solver_settings, **kwargs)
+        self.class_caller.solve(**kwargs)
 
     def extract_all_info(self, general_inputs, liquid_properties):
         """
@@ -854,3 +869,76 @@ class StokesWrapper(PlottingSettings):
         self.plotpy.lineplot([(self.r_mids, n_tauh_n_arr)],
                              xlabel=r'$\hat{r}$', ylabel=r'$\mathbf{n}\cdot\hat{\bar{\bar{\tau}}}_m \cdot \mathbf{n}$',
                              fig_title='Normal component of the hydraulic stress at the meniscus')
+
+
+class SurfaceWrapper(PlottingSettings):
+    def __init__(self, main_class, electrostatics_results, stokes_results, **kwargs):
+        """
+        Initialize the SurfaceWrapper class. This class contains all the necessary methods to perform the shape update
+        of the interface following Methdology 1 from Ximo's thesis on Surface Update problem.
+        Args:
+            main_class: Object from the MainWrapper class, containing all the simulation results.
+            electrostatics_results: Object containing all the data from the electrostatics simulation.
+            stokes_results: Object containing all the data from the stokes simulation.
+            **kwargs: Used kwargs are:
+                        - surface_update_parameter: Parameter indicating how aggressive the update should be (this is
+                            the beta term from Ximo's thesis). The bigger this parameter is the more aggressive the
+                            update will be. Optional, default is 0.05
+        """
+        super().__init__()  # Inherit the Plotting class.
+
+        # Get the update parameter (beta from the thesis).
+        self.update_parameter = kwargs.get('surface_update_parameter')
+
+        # Initialize the SurfaceUpdate class.
+        self.class_caller = SurfaceUpdate(main_class, electrostatics_results, stokes_results,
+                                          beta=self.update_parameter)
+
+        # Preallocate data.
+        self.new_function, self.created_nodes = None, None
+        self.r_nodes, self.z_nodes = None, None
+
+    def run_solver(self):
+        """
+        Run the surface update solver. This will yield, among many other parameters, the Scipy object containing the
+        solution. This will be accesible by using self.simulation_results.SurfaceUpdate.sol.y
+        Returns:
+
+        """
+        self.class_caller.solve()
+
+    def extract_all_info(self, general_inputs):
+        """
+        Extract all the important information from the SurfaceUpdate class. In particular, this methods extracts the
+        y(x) function of the updated surface and the values of x used to get the solution.
+        Returns:
+
+        """
+        self.new_function = self.class_caller.sol.sol  # y(x) of the updated surface.
+        self.created_nodes = self.class_caller.sol.x  # Values of x created by the solver to obtain the solution.
+
+        # Obtain nodes coordinates.
+        self.r_nodes, self.z_nodes = general_inputs.r_nodes, general_inputs.z_nodes
+
+    def plot_results(self, save_images=False, save_mat=False):
+        """
+        Plot the obtained results form the extract_all_info method of this class.
+        Args:
+            save_images: Boolean indicating if images should be saved or not.
+            save_mat: Boolean indicating whether plotted data should be exported to .mat files.
+
+        Returns:
+
+        """
+        # Prepare data to be plotted.
+        y_plot = self.new_function(self.created_nodes)[0]  # 0 to get y(x). 1 would return y'(x).
+
+        # Apply user inputs.
+        self.plotpy.apply_kwargs(save_images=save_images, save_mat=save_mat)
+
+        # Plot the results.
+        self.plotpy.lineplot([(self.created_nodes, y_plot, 'First iteration'),
+                              (self.r_nodes, self.z_nodes, 'Initial shape')],
+                             xlabel=r'$\hat{r}$', y_label=r'$\hat{z}$',
+                             fig_title='Evolution of the meniscus surface after first iteration.',
+                             legend_title='Surfaces')

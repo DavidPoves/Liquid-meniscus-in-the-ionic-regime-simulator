@@ -76,8 +76,10 @@ if __name__ == '__main__':
 
 	# Call the MAIN script.
 	main = main_caller(liquid='EMIBF4', required_inputs=req_inputs, electrostatics_bcs=bcs_electrostatics,
-	                   Stokes_bcs=bcs_Stokes, electrostatics_solver_settings=solver_settings)
+	                   Stokes_bcs=bcs_Stokes, electrostatics_solver_settings=solver_settings,
+	                   surface_update_parameter=0.05)
 
 	# Plot the solutions of the different simulations.
 	main.simulation_results.Electrostatics.plot_results(save_images=False, save_mat=False)
 	main.simulation_results.Stokes.plot_results(save_images=False, save_mat=False)
+	main.simulation_results.SurfaceUpdate.plot_results(save_images=True, save_mat=False)
