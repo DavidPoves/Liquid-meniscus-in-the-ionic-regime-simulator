@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from Input_Parameters import Liquid_Properties
-from MainMenu import run_main_menu
+from Menu_scripts.MainMenu import run_main_menu
 from Solvers.NS_Solver import Stokes as Stokes_sim
 from Solvers.Poisson_solver import Poisson
 from Solvers.SurfaceUpdate import SurfaceUpdate
@@ -144,8 +144,8 @@ class MainWrapper(object):
 
         # Load some default values to some of the kwargs.
         kwargs.setdefault('relative_permittivity', 10)
-        kwargs.setdefault('checks_folder_name', 'CHECKS')
-        kwargs.setdefault('restrictions_folder_name', 'RESTRICTIONS')
+        kwargs.setdefault('checks_folder_name', '../CHECKS')
+        kwargs.setdefault('restrictions_folder_name', '../RESTRICTIONS')
         kwargs.setdefault('convection_charge', 0)
         kwargs.setdefault('electrostatics_solver_settings', None)
         kwargs.setdefault('run_full_simulation', True)

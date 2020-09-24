@@ -7,10 +7,10 @@ import numpy as np
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from matplotlib.figure import Figure
 
-import Tools.PredefinedFuns as PreFuns
+import Menu_scripts.PredefinedFuns as PreFuns
 from Tools.CreateMesh import str_2_num, write_mesh
-from Tools.GMSH_Interface import GMSHInterface
-from Tools.ToolTip_creator import CreateToolTip
+from Geometry_scripts.GMSH_Interface import GMSHInterface
+from Menu_scripts.ToolTip_creator import CreateToolTip
 
 
 class MainMenu(tk.Frame):

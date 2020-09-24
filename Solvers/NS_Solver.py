@@ -10,7 +10,7 @@ import fenics as fn
 import multiphenics as mp
 import numpy as np
 
-from Tools.GMSH_Interface import GMSHInterface
+from Geometry_scripts.GMSH_Interface import GMSHInterface
 from Tools.PostProcessing import PostProcessing
 
 df.parameters["ghost_mode"] = "shared_facet"  # required by dS

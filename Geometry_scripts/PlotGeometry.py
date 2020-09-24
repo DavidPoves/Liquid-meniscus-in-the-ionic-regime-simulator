@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpldatacursor import datacursor
 
-from Tools.GMSH_Interface import GMSHInterface
+from Geometry_scripts.GMSH_Interface import GMSHInterface
 
 
 def on_pick(event):

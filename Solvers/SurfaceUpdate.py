@@ -3,7 +3,7 @@ import numpy as np
 import sympy as sp
 
 from Tools.BVPInterface import BVPInterface as BVP
-from Tools.GMSH_Interface import GMSHInterface
+from Geometry_scripts.GMSH_Interface import GMSHInterface
 
 
 class SurfaceUpdate(object):

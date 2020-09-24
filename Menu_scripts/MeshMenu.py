@@ -1,7 +1,7 @@
 from tkinter import *
 
 from Tools.CreateMesh import create_mesh, write_mesh
-from Tools.ToolTip_creator import CreateToolTip
+from Menu_scripts.ToolTip_creator import CreateToolTip
 
 """
 Options for the mesh can be found at:

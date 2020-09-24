@@ -25,7 +25,7 @@ from MainMenu import run_main_menu
 from Solvers.NS_Solver import Stokes
 from Solvers.Poisson_solver import Poisson
 from Tools.BVPInterface import BVPInterface
-from Tools.GMSH_Interface import GMSHInterface
+from Geometry_scripts.GMSH_Interface import GMSHInterface
 from Tools.MeshConverter import msh2xml
 from Tools.PlotPy import PlotPy
 from Tools.PostProcessing import PostProcessing

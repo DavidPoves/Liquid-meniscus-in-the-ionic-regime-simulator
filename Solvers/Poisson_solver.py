@@ -20,8 +20,8 @@ import matplotlib.pyplot as plt
 import multiphenics as mp
 import numpy as np
 
-from Tools.GMSH_Interface import GMSHInterface
-from Tools.ObtainVectors import ObtainVectors
+from Geometry_scripts.GMSH_Interface import GMSHInterface
+from Geometry_scripts.ObtainVectors import ObtainVectors
 from Tools.generate_restrictions import Restrictions
 
 df.parameters["ghost_mode"] = "shared_facet"  # required by dS

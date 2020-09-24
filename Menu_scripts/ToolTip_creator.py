@@ -1,5 +1,6 @@
 import tkinter as tk
 
+
 class ToolTip(object):
 
     def __init__(self, widget):
@@ -30,6 +31,7 @@ class ToolTip(object):
         self.tipwindow = None
         if tw:
             tw.destroy()
+
 
 def CreateToolTip(widget, text):
     toolTip = ToolTip(widget)

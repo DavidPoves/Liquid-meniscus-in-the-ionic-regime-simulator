@@ -4,7 +4,7 @@ import fenics as fn
 import multiphenics as mp
 
 from MainMenu import run_main_menu
-from Tools.GMSH_Interface import GMSHInterface
+from Geometry_scripts.GMSH_Interface import GMSHInterface
 from Tools.MeshConverter import msh2xml
 from Tools.generate_restrictions import Restrictions
 
