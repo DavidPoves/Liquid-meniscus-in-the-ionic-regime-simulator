@@ -39,6 +39,8 @@ length factor.
 -> Parabolic:   - Frontal Delaunay, max size: 0.03
 """
 
+# %% RUN THE SIMULATION
+
 
 def main_caller(liquid, required_inputs, electrostatics_bcs, Stokes_bcs, **kwargs):
 	wrapper = MainWrapper(liquid, required_inputs, electrostatics_bcs, Stokes_bcs, **kwargs)
