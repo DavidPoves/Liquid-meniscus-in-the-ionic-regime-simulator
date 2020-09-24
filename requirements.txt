@@ -1,0 +1,11 @@
+matplotlib==3.3.0
+numpy==1.19.0
+py2gmsh==4.2.3.1
+gmsh_api==0.1.5
+mpldatacursor==0.7.1
+pyparsing==2.4.7
+scipy==1.5.1
+pandas==1.0.5
+fenics_dolfin==2019.1.0
+sympy==1.6.1
+fenics==2019.1.0
