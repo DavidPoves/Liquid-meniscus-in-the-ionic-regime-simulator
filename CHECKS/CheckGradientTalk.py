@@ -1,12 +1,11 @@
+import os
+
 import fenics as fn
 import multiphenics as mp
-import os
-import numpy as np
 
 from MainMenu import run_main_menu
-
-from Tools.MeshConverter import msh2xml
 from Tools.GMSH_Interface import GMSHInterface
+from Tools.MeshConverter import msh2xml
 from Tools.generate_restrictions import Restrictions
 
 # %% GET THE MESH PATH AND NAME.

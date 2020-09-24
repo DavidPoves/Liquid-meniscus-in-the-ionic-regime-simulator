@@ -1,13 +1,12 @@
-from Tools.MeshMenu import run_app
-from Tools.CreateMesh import create_mesh, write_mesh
-
-import numpy as np
 import re
 
+import numpy as np
 from py2gmsh import Mesh, Entity
 
-from Tools.EvaluateString import NumericStringParser
+from Tools.CreateMesh import create_mesh, write_mesh
 from Tools.CreateMesh import str_2_num
+from Tools.EvaluateString import NumericStringParser
+from Tools.MeshMenu import run_app
 
 
 class GMSHInterface(object):

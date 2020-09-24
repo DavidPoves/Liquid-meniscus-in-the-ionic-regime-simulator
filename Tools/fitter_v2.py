@@ -26,12 +26,11 @@ import sys
 import threading
 from datetime import datetime
 
-import scipy.stats
 import numpy as np
-import pylab
 import pandas as pd
+import pylab
+import scipy.stats
 from scipy.stats import entropy as kl_div
-
 
 __all__ = ['get_common_distributions', 'get_distributions', 'Fitter']
 

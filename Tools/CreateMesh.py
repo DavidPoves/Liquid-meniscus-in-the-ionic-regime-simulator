@@ -1,12 +1,9 @@
-import gmsh_api.gmsh as gmsh
-
-import numpy as np
-
 import os
 import subprocess
-
 import tkinter as tk
 from tkinter import filedialog
+
+import gmsh_api.gmsh as gmsh
 
 
 def interface_style_detect():

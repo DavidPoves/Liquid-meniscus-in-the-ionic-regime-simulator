@@ -1,17 +1,11 @@
-import fenics as fn
-import multiphenics as mp
 import os
-import numpy as np
+
+import fenics as fn
 
 from MainMenu import run_main_menu
-
-from Tools.MeshConverter import msh2xml
 from Tools.GMSH_Interface import GMSHInterface
-from Tools.generate_restrictions import Restrictions
+from Tools.MeshConverter import msh2xml
 from Tools.PostProcessing import PostProcessing
-import matplotlib.pyplot as plt
-import dolfin_dg
-
 
 mesh_app = run_main_menu()
 filepath = mesh_app.msh_filename

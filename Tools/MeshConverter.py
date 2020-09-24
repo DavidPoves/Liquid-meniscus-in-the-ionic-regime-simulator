@@ -1,4 +1,3 @@
-import dolfin as df
 import os
 
 

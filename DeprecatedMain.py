@@ -16,22 +16,19 @@
 # Import the libraries.
 import os
 
-from Solvers.Poisson_solver import Poisson
-from Solvers.NS_Solver import Stokes
-
 import fenics as fn
 import numpy as np
 import sympy as sp
 
 from Input_Parameters import Liquid_Properties
+from MainMenu import run_main_menu
+from Solvers.NS_Solver import Stokes
+from Solvers.Poisson_solver import Poisson
+from Tools.BVPInterface import BVPInterface
+from Tools.GMSH_Interface import GMSHInterface
+from Tools.MeshConverter import msh2xml
 from Tools.PlotPy import PlotPy
 from Tools.PostProcessing import PostProcessing
-from Tools.MeshConverter import msh2xml
-from Tools.GMSH_Interface import GMSHInterface
-from Tools.BVPInterface import BVPInterface
-
-from MainMenu import run_main_menu
-
 
 """
 This is the main script of the Bachelor Thesis:

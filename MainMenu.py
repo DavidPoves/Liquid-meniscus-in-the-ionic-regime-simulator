@@ -1,17 +1,16 @@
+import os
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import messagebox
 
+import numpy as np
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from matplotlib.figure import Figure
 
-import os
-import numpy as np
-
-from Tools.GMSH_Interface import GMSHInterface
-from Tools.CreateMesh import str_2_num, write_mesh
-from Tools.ToolTip_creator import CreateToolTip
 import Tools.PredefinedFuns as PreFuns
+from Tools.CreateMesh import str_2_num, write_mesh
+from Tools.GMSH_Interface import GMSHInterface
+from Tools.ToolTip_creator import CreateToolTip
 
 
 class MainMenu(tk.Frame):

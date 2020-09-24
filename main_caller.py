@@ -1,6 +1,6 @@
-from MAIN import MainWrapper
 import fenics as fn
 
+from MAIN import MainWrapper
 
 # Copyright (C) 2020- by David Poves Ros
 #

@@ -2,16 +2,16 @@
 Author: David Poves Ros.
 """
 
-# Import the modules.
-import fenics as fn
-import dolfin as df
-import multiphenics as mp
-import numpy as np
 import os
 
-from Tools.PostProcessing import PostProcessing
-from Tools.GMSH_Interface import GMSHInterface
+import dolfin as df
+# Import the modules.
+import fenics as fn
+import multiphenics as mp
+import numpy as np
 
+from Tools.GMSH_Interface import GMSHInterface
+from Tools.PostProcessing import PostProcessing
 
 df.parameters["ghost_mode"] = "shared_facet"  # required by dS
 

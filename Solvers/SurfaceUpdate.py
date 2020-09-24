@@ -1,6 +1,6 @@
+import fenics as fn
 import numpy as np
 import sympy as sp
-import fenics as fn
 
 from Tools.BVPInterface import BVPInterface as BVP
 from Tools.GMSH_Interface import GMSHInterface

@@ -1,7 +1,7 @@
+import matplotlib.pyplot as plt
+import numpy as np
 import scipy.integrate
 import sympy as sp
-import numpy as np
-import matplotlib.pyplot as plt
 
 
 class BVPInterface(object):

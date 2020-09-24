@@ -13,14 +13,12 @@
 # GNU Lesser General Public License for more details.
 #
 
-import matplotlib.pyplot as plt
-import os
-import pandas as pd
-import numpy as np
-import subprocess
-import platform
-import shutil
 import distutils.spawn as spwn
+import os
+import shutil
+
+import matplotlib.pyplot as plt
+import pandas as pd
 import scipy.io as sio
 
 

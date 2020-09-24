@@ -16,14 +16,13 @@
 # Import the modules.
 import dolfin as df
 import fenics as fn
-import multiphenics as mp
 import matplotlib.pyplot as plt
+import multiphenics as mp
 import numpy as np
 
 from Tools.GMSH_Interface import GMSHInterface
-from Tools.generate_restrictions import Restrictions
 from Tools.ObtainVectors import ObtainVectors
-from Tools.PostProcessing import PostProcessing
+from Tools.generate_restrictions import Restrictions
 
 df.parameters["ghost_mode"] = "shared_facet"  # required by dS
 
