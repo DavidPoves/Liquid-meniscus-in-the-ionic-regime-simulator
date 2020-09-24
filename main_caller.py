@@ -2,6 +2,44 @@ from OrganizedMAIN import MainWrapper
 import fenics as fn
 
 
+# Copyright (C) 2020- by David Poves Ros
+#
+# This file is part of the End of Degree Thesis.
+#
+# This is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# multiphenics is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Lesser General Public License for more details.
+#
+
+# %% WHAT CONVERGES.
+# The following options have been proven to converge to satisfactory results. Notice that the variable parameter depends
+# on the selected value of B: variable_parameter = 1/B * np.tan(np.radians(49.3))
+"""
+All computations have been carried out using 0.01 as a characteristic length from curvature and 1.25 as characteristic
+length factor.
+-> Taylor cone: - Frontal Delaunay, max size: 0.06, variable_parameter = 24.89523033034176
+                - Frontal Delaunay, max.size: 0.05, variable parameter = 24.89523033034176
+                - Frontal Delaunay, max size: 0.04, variable_parameter = 24.89523033034176
+                - Automatic, max.size: 0.1, variable parameter = 24.89523033034176
+                - Automatic, max.size: 0.2, variable parameter = 24.89523033034176
+                - Automatic, max.size: 0.3, variable parameter = 24.89523033034176
+-> Cosine:      - Frontal Delaunay, max size: 0.06
+                - Frontal Delaunay, max size: 0.1
+                - Frontal Delaunay, max size: 0.03
+                - Automatic, max size: 0.1
+                - Automatic, max size 0.03
+                - Automatic, max size 0.05
+    All cosine computations were done with an initial height of 0.5
+-> Parabolic:   - Frontal Delaunay, max size: 0.03
+"""
+
+
 def main_caller(liquid, required_inputs, electrostatics_bcs, Stokes_bcs, **kwargs):
 	wrapper = MainWrapper(liquid, required_inputs, electrostatics_bcs, Stokes_bcs, **kwargs)
 	return wrapper
