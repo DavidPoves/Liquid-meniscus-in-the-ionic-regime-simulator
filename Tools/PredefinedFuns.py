@@ -1,5 +1,11 @@
 import numpy as np
 
+"""
+Within this file, the predefined functions appearing in the main menu may be defined. If a new one is added, it must be
+added to the attributes self.predef_funs_show and self.predef_funs of the PredefinedFunctions class from the MainMenu.py
+file. Moreover, these functions must be added to the self.save method from the previous class.
+"""
+
 
 def TaylorCone(s):
 	r = ((1-2*s)*1)/(1-2*s*(1-s)*(1-20))

@@ -16,6 +16,11 @@ import Tools.PredefinedFuns as PreFuns
 
 class MainMenu(tk.Frame):
 	def __init__(self, master=None):
+		"""
+		Initialize the MainMenu class. This will launch the GUI.
+		Args:
+			master: No user input required. Default is None.
+		"""
 		tk.Frame.__init__(self, master)
 
 		# Create the options buttons.
@@ -33,6 +38,15 @@ class MainMenu(tk.Frame):
 		self.msh_filename = ''
 
 	def load_geometry_mesh(self, master):
+		"""
+		In case the user decides to load a file, this method will load the selected file. It will launch a dialog where
+		the user may choose the file. Accepted extensions are .geo, .msh and .xml.
+		Args:
+			master: Master window of the GUI.
+
+		Returns:
+
+		"""
 		ftypes = [('Dolfin Mesh File', '*.xml'), ('GMSH Geometry File', '*geo'), ('GMSH Mesh File', '*.msh'),
 		          ('All files', '*')]
 		filename = filedialog.askopenfilename(initialdir=os.getcwd(), filetypes=ftypes)
@@ -53,6 +67,14 @@ class MainMenu(tk.Frame):
 class GeometryGeneration(tk.Frame):
 
 	def __init__(self, master1, main):
+		"""
+		Initialize the GeometryGeneration class, which will contain all the methods and attributes required to generate
+		a geometry. When initialized, a GUI will pop up, where the user will be able to personalize all the geometry
+		options to generate the desired .geo file.
+		Args:
+			master1: master window.
+			main: main menu object
+		"""
 		master2 = tk.Tk()
 		master2.title('Create a new Geometry')
 		tk.Frame.__init__(self, master2)
@@ -152,6 +174,11 @@ class GeometryGeneration(tk.Frame):
 			                                                                              padx=10, pady=10)
 
 	def check_angle_units(self):
+		"""
+		This function checks the option chosen by the user on the Degrees? checkbox from the GUI.
+		Returns:
+
+		"""
 		if self.degrees_var.get():
 			self.degrees = True
 			self.angle_unit = 'degrees'

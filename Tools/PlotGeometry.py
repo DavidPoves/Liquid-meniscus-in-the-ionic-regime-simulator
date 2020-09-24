@@ -18,6 +18,15 @@ def on_pick(event):
 
 
 def plot_geo(filepath):
+	"""
+	Plot a .geo file and interact with the graph. User may check the names of the physical curves (boundaries) by
+	hovering the cursor over the desired curve/boundary.
+	Args:
+		filepath: Path of the .geo file.
+
+	Returns:
+
+	"""
 	# Extract the points and curves from the .geo file.
 	points_dict, curves_dict = GMSHInterface.extract_points_from_geo(filepath)
 	boundaries_ids, physical_dict = GMSHInterface.get_boundaries_ids(filepath)
@@ -55,4 +64,3 @@ def plot_geo(filepath):
 if __name__ == '__main__':
 	path = "/Users/davidpoves/TFG/CODE/TFG-V2/MESH OBJECTS/Prueba.geo"
 	interactive_data = plot_geo(path)
-	# print(interactive_data._last_annotation.get_text())
