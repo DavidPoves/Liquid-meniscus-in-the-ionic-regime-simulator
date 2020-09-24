@@ -1,2 +1,2 @@
-# TFG v2
- Second Version of TFG
+# Liquid meniscus in the ionic regime simulator
+ Simulation of the liquid meniscus in the ionic regime of capillary electrospray thrusters.
