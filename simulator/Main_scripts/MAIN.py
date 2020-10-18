@@ -21,12 +21,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from simulator.Liquids import LiquidProperties
-from simulator.Menu_scripts.MainMenu import run_main_menu
+from simulator.GUI_scripts.MainMenu import run_main_menu
 from simulator.Solvers.NS_Solver import Stokes as Stokes_sim
 from simulator.Solvers.Poisson_solver import Poisson
 from simulator.Solvers.SurfaceUpdate import SurfaceUpdate
 from simulator.Tools.MeshConverter import msh2xml
-from simulator.Tools.PlotPy import PlotPy
+from simulator.Tools.SciencePlotting import SciencePlotting
 from simulator.Tools.PostProcessing import PostProcessing
 
 """
@@ -264,62 +264,23 @@ class FilePlacement(object):
         self.xml_filepath = self.mesh_objects_folder + '/' + self.xml_filename
 
 
-class PlottingSettings():
+class PlottingSettings(object):
     def __init__(self, **kwargs):
         """
         Initialize the Plotting class.
         Args:
             **kwargs: Used kwargs are:
                         - use_latex: Boolean indicating whether to use latex interpreter or not.
-                        - grid_properties: Dictionary defining the properties the graph grid should have.
-                        - font_properties: Dictionary containing the font properties.
-                        - save_images: Boolean indicating whether to save the generated plots or not.
-                        - save_mat: Boolean indicating whether to export the plot data into .mat files or not.
+                        - All kwargs from SciencePlotting class. Check its documentation for full reference.
         """
         # Set default parameters to the kwargs.
-        kwargs.setdefault('use_latex', True)
-        kwargs.setdefault('grid_properties', None)
-        kwargs.setdefault('font_properties', None)
-        kwargs.setdefault('save_images', False)
-        kwargs.setdefault('save_mat', False)
+        kwargs.setdefault('fontsize', 14)
 
         # Load the plotting options.
+        """ To get information about all the inputs available when initializing the SciencePlotting class, call the
+        static method check_init_inputs() or type help(SciencePlotting).
         """
-        All the available fonts for matplotlib:
-        https://matplotlib.org/1.4.0/users/usetex.html
-
-        To see a full list of background styles check the following code:
-        plt.style.available
-
-        Notice there are some background styles where linewidth of the grid cannot be
-        controlled. In that case, this parameter will be ignored
-        All latex font styles can be found at:
-        https://www.overleaf.com/learn/latex/Font_sizes,_families,_and_styles
-        """
-        if kwargs.get('grid_properties') is None:
-            self.grid_properties = {'linestyle': "--", 'color': 'black', 'linewidth': 0.2}
-        else:
-            self.grid_properties = kwargs.get('grid_properties')
-
-        if kwargs.get('font_properties') is None:
-            self.font_properties = {'family': 'serif', 'style': 'Computer Modern Roman',
-                                    'fig_title_style': 'bold',
-                                    'legend_title_style': 'bold',
-                                    'legend_labels_style': 'slanted',
-                                    'axis_labels_style': 'slanted'}
-        else:
-            self.font_properties = kwargs.get('font_properties')
-
-        self.background_style = 'seaborn-paper'
-        self.fontsize = 12.
-        self.figsize = (12., 7.)
-        self.use_latex = kwargs.get('use_latex')
-        self.plotpy = PlotPy(latex=self.use_latex, fontsize=self.fontsize, figsize=self.figsize,
-                             background_style=self.background_style,
-                             font_properties=self.font_properties,
-                             grid_properties=self.grid_properties,
-                             save_images=kwargs.get('save_images'), save_mat=kwargs.get('save_mat'),
-                             extension='jpg')
+        self.spy = SciencePlotting(**kwargs)
 
 
 class RunSimulation(object):
@@ -638,12 +599,14 @@ class ElectrostaticsWrapper(PlottingSettings):
                                        self.normal_component_liquid ** 2) + \
                                       (liquid_properties.eps_r - 1) * self.tangential_component ** 2
 
-    def plot_results(self, save_images=False, save_mat=False):
+    def plot_results(self, save_images=False, save_mat=False, **kwargs):
         """
         Plot the most important data obtained from the Electrostatics simulation.
         Args:
             save_images: Boolean indicating if images must be saved or not.
             save_mat: Boolean indicating if data must be saved into .mat files.
+            kwargs: All kwargs accepted are from the lineplot method of SciencePlotting class. Check its docs for full
+            reference.
 
         Returns:
 
@@ -663,42 +626,39 @@ class ElectrostaticsWrapper(PlottingSettings):
         x_label = r'$\hat{r}$'
         y_label = r'$\hat{E}$'
 
+        # Setup input for the plotting function.
+        kwargs.setdefault('save_fig', save_images)
+        kwargs.setdefault('save_mat', save_mat)
+
         # Introduce user inputs into plotting class.
-        self.plotpy.apply_kwargs(save_images=save_images, save_mat=save_mat)
 
-        self.plotpy.lineplot([(self.general_inputs.r_nodes, self.radial_component_vacuum, r'Radial ($\hat{r}$)'),
-                              (self.general_inputs.r_nodes, self.axial_component_vacuum, r'Axial ($\hat{z}$)')],
-                             xlabel=x_label, ylabel=y_label,
-                             fig_title='Radial and axial components of the vacuum electric field',
-                             legend_title='Field Components')
+        self.spy.lineplot([(self.general_inputs.r_nodes, self.radial_component_vacuum, r'Radial ($\hat{r}$)'),
+                           (self.general_inputs.r_nodes, self.axial_component_vacuum, r'Axial ($\hat{z}$)')],
+                          xlabel=x_label, ylabel=y_label,
+                          fig_title='Radial and axial components of the vacuum electric field', **kwargs)
 
-        self.plotpy.lineplot([(self.general_inputs.r_nodes, self.radial_component_liquid, r'Radial ($\hat{r}$)'),
-                              (self.general_inputs.r_nodes, self.axial_component_liquid, r'Axial ($\hat{z}$)')],
-                             xlabel=x_label, ylabel=y_label,
-                             fig_title='Radial and axial components of the liquid electric field',
-                             legend_title='Field Components')
+        self.spy.lineplot([(self.general_inputs.r_nodes, self.radial_component_liquid, r'Radial ($\hat{r}$)'),
+                           (self.general_inputs.r_nodes, self.axial_component_liquid, r'Axial ($\hat{z}$)')],
+                          xlabel=x_label, ylabel=y_label,
+                          fig_title='Radial and axial components of the liquid electric field', **kwargs)
 
-        self.plotpy.lineplot([(self.general_inputs.r_mids, E_t_array)],
-                             xlabel=x_label, ylabel=r'$\hat{E}_t$',
-                             fig_title='Tangential component of the electric field at the meniscus')
+        self.spy.lineplot({x_label: self.general_inputs.r_mids, r'$\hat{E}_t$': E_t_array},
+                          fig_title='Tangential component of the electric field at the meniscus', **kwargs)
 
-        self.plotpy.lineplot([(self.general_inputs.r_mids, E_v_n_array, 'Vacuum'),
-                              (self.general_inputs.r_mids, E_l_n_array, 'Liquid')],
-                             xlabel=x_label, ylabel=y_label,
-                             fig_title='Normal components of the electric fields',
-                             legend_title='Subdomains')
+        self.spy.lineplot([(self.general_inputs.r_mids, E_v_n_array, 'Vacuum'),
+                           (self.general_inputs.r_mids, E_l_n_array, 'Liquid')],
+                          xlabel=x_label, ylabel=y_label, fig_title='Normal components of the electric fields',
+                          **kwargs)
 
-        self.plotpy.lineplot([(self.general_inputs.r_mids, sigma_arr)],
-                             xlabel=x_label, ylabel=r'$\hat{\sigma}$',
-                             fig_title='Radial evolution of the surface charge density')
+        self.spy.lineplot({x_label: self.general_inputs.r_mids, r'$\hat{\sigma}$': sigma_arr},
+                          fig_title='Radial evolution of the surface charge density', **kwargs)
 
-        self.plotpy.lineplot([(self.general_inputs.r_mids, j_ev_arr)],
-                             xlabel=x_label, ylabel=r'$\hat{j}_e$',
-                             fig_title='Charge evaporation along the meniscus')
+        self.spy.lineplot({x_label: self.general_inputs.r_mids, r'$\hat{j}_e$': j_ev_arr},
+                          fig_title='Charge evaporation along the meniscus', **kwargs)
 
-        self.plotpy.lineplot([(self.general_inputs.r_mids, n_taue_n_arr)],
-                             xlabel=x_label, ylabel=r'$\mathbf{n}\cdot\hat{\bar{\bar{\tau}}}_e \cdot \mathbf{n}$',
-                             fig_title='Normal component of the electric stress at the meniscus')
+        self.spy.lineplot({x_label: self.general_inputs.r_mids,
+                           r'$\mathbf{n}\cdot\hat{\bar{\bar{\tau}}}_e \cdot \mathbf{n}$': n_taue_n_arr},
+                          fig_title='Normal component of the electric stress at the meniscus', **kwargs)
 
 
 class StokesWrapper(PlottingSettings):
@@ -820,12 +780,13 @@ class StokesWrapper(PlottingSettings):
                                             space_type='scalar', boundary_type='internal')
         self.convection_charge = self.class_caller.j_conv
 
-    def plot_results(self, save_images=False, save_mat=False):
+    def plot_results(self, save_images=False, save_mat=False, **kwargs):
         """
         Plot the results obtained from the Stokes simulation.
         Args:
             save_images: Boolean indicating if images should be saved or not.
             save_mat: Boolean indicating if .mat files from the plotted data should be saved or not.
+            kwargs: All kwargs accepted by SciencePlotting. See its docs for a full reference.
 
         Returns:
 
@@ -839,33 +800,31 @@ class StokesWrapper(PlottingSettings):
         u_t_arr = PostProcessing.extract_from_function(self.tangential_velocity, self.coords_mids)
 
         # Apply the user's inputs into the plotting class.
-        self.plotpy.apply_kwargs(save_images=save_images, save_mat=save_mat)
+
+        kwargs.setdefault('save_fig', save_images)
+        kwargs.setdefault('save_mat', save_mat)
 
         # Plot the results.
-        self.plotpy.lineplot([(self.r_nodes, self.radial_component_velocity, r'Radial ($\hat{r}$)'),
-                              (self.r_nodes, self.axial_component_velocity, r'Axial ($\hat{z}$)')],
-                             xlabel=r'$\hat{r}$', ylabel=r'$\hat{u}$',
-                             fig_title='Components of the velocity field',
-                             legend_title='Field Components')
+        self.spy.lineplot([(self.r_nodes, self.radial_component_velocity, r'Radial ($\hat{r}$)'),
+                           (self.r_nodes, self.axial_component_velocity, r'Axial ($\hat{z}$)')],
+                          xlabel=r'$\hat{r}$', ylabel=r'$\hat{u}$',
+                          fig_title='Components of the velocity field', **kwargs)
 
-        self.plotpy.lineplot([(self.r_nodes, p_arr)], xlabel=r'$\hat{r}$', ylabel=r'$\hat{p}$',
-                             fig_title='Pressure along the meniscus')
+        self.spy.lineplot({r'$\hat{r}$': self.r_nodes, r'$\hat{p}$': p_arr}, fig_title='Pressure along the meniscus',
+                          **kwargs)
 
-        self.plotpy.lineplot([(self.r_mids, u_n_arr)],
-                             xlabel=r'$\hat{r}$', ylabel=r'$\hat{u}_n$',
-                             fig_title='Normal Component of the velocity field.')
+        self.spy.lineplot({r'$\hat{r}$': self.r_mids, r'$\hat{u}_n$': u_n_arr},
+                          fig_title='Normal Component of the velocity field.', **kwargs)
 
-        self.plotpy.lineplot([(self.r_mids, u_t_arr)],
-                             xlabel=r'$\hat{r}$', ylabel=r'$\hat{u}_t$',
-                             fig_title='Tangential Component of the velocity field.')
+        self.spy.lineplot({r'$\hat{r}$': self.r_mids, r'$\hat{u}_t$': u_t_arr},
+                          fig_title='Tangential Component of the velocity field.', **kwargs)
 
-        self.plotpy.lineplot([(self.r_nodes, j_conv_arr)],
-                             xlabel=r'$\hat{r}$', ylabel=r'$\hat{j}_{conv}$',
-                             fig_title='Convection charge transport')
+        self.spy.lineplot({r'$\hat{r}$': self.r_nodes, r'$\hat{j}_{conv}$': j_conv_arr},
+                          fig_title='Convection charge transport', **kwargs)
 
-        self.plotpy.lineplot([(self.r_mids, n_tauh_n_arr)],
-                             xlabel=r'$\hat{r}$', ylabel=r'$\mathbf{n}\cdot\hat{\bar{\bar{\tau}}}_m \cdot \mathbf{n}$',
-                             fig_title='Normal component of the hydraulic stress at the meniscus')
+        self.spy.lineplot({r'$\hat{r}$': self.r_mids,
+                           r'$\mathbf{n}\cdot\hat{\bar{\bar{\tau}}}_m \cdot \mathbf{n}$': n_tauh_n_arr},
+                          fig_title='Normal component of the hydraulic stress at the meniscus', **kwargs)
 
 
 class SurfaceWrapper(PlottingSettings):
@@ -917,12 +876,13 @@ class SurfaceWrapper(PlottingSettings):
         # Obtain nodes coordinates.
         self.r_nodes, self.z_nodes = general_inputs.r_nodes, general_inputs.z_nodes
 
-    def plot_results(self, save_images=False, save_mat=False):
+    def plot_results(self, save_images=False, save_mat=False, **kwargs):
         """
         Plot the obtained results form the extract_all_info method of this class.
         Args:
             save_images: Boolean indicating if images should be saved or not.
             save_mat: Boolean indicating whether plotted data should be exported to .mat files.
+            kwargs: All kwargs accepted by SciencePlotting. Check its documentation for a full reference.
 
         Returns:
 
@@ -931,11 +891,12 @@ class SurfaceWrapper(PlottingSettings):
         y_plot = self.new_function(self.created_nodes)[0]  # 0 to get y(x). 1 would return y'(x).
 
         # Apply user inputs.
-        self.plotpy.apply_kwargs(save_images=save_images, save_mat=save_mat)
+
+        kwargs.setdefault('save_fig', save_images)
+        kwargs.setdefault('save_mat', save_mat)
 
         # Plot the results.
-        self.plotpy.lineplot([(self.created_nodes, y_plot, 'First iteration'),
-                              (self.r_nodes, self.z_nodes, 'Initial shape')],
-                             xlabel=r'$\hat{r}$', y_label=r'$\hat{z}$',
-                             fig_title='Evolution of the meniscus surface after first iteration.',
-                             legend_title='Surfaces')
+        self.spy.lineplot([(self.created_nodes, y_plot, 'First iteration'),
+                           (self.r_nodes, self.z_nodes, 'Initial shape')],
+                          xlabel=r'$\hat{r}$', y_label=r'$\hat{z}$',
+                          fig_title='Evolution of the meniscus surface after first iteration.', **kwargs)

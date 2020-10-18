@@ -24,8 +24,8 @@ import scipy.io as sio
 
 class PlotPy(object):
     """
-    This class will contain all the necessary methods to make the plots as
-    customizable as possible using the seaborn and matplotlib libraries.
+    This class will contain all the necessary methods to make the plots as customizable as possible using the seaborn
+    and matplotlib libraries. This is a deprecated version of the SciencePlotting module.
     """
 
     def __init__(self, **kwargs):

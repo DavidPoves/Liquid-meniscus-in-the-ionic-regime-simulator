@@ -21,7 +21,7 @@ import numpy as np
 import sympy as sp
 
 from simulator.Liquids import LiquidProperties
-from simulator.Menu_scripts.MainMenu import run_main_menu
+from simulator.GUI_scripts.MainMenu import run_main_menu
 from simulator.Solvers.NS_Solver import Stokes
 from simulator.Solvers.Poisson_solver import Poisson
 from simulator.Tools.BVPInterface import BVPInterface

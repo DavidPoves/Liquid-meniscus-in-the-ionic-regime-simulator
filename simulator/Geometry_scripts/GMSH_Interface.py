@@ -6,7 +6,7 @@ from py2gmsh import Mesh, Entity
 from simulator.Tools.CreateMesh import create_mesh, write_mesh
 from simulator.Tools.CreateMesh import str_2_num
 from simulator.Tools.EvaluateString import NumericStringParser
-from simulator.Menu_scripts.MeshMenu import run_app
+from simulator.GUI_scripts.MeshMenu import run_app
 
 
 class GMSHInterface(object):

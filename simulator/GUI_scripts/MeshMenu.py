@@ -1,7 +1,7 @@
 from tkinter import *
 
 from simulator.Tools.CreateMesh import create_mesh, write_mesh
-from simulator.Menu_scripts.ToolTip_creator import CreateToolTip
+from simulator.GUI_scripts.ToolTip_creator import CreateToolTip
 
 """
 Options for the mesh can be found at:
@@ -17,13 +17,13 @@ class MeshApp(Frame):
         ref_label.grid(row=0, column=0)
         CreateToolTip(ref_label, 'Select the degree of refinement for the mesh.')
 
-        min_label = Label(master3, text="Min. Element Size:")
+        min_label = Label(master3, text="Max. Element Size:")
         min_label.grid(row=1, column=0)
-        CreateToolTip(min_label, 'Minimum mesh element size.')
+        CreateToolTip(min_label, 'Maximum mesh element size.')
 
-        max_label = Label(master3, text="Max. Element Size:")
+        max_label = Label(master3, text="Min. Element Size:")
         max_label.grid(row=2, column=0)
-        CreateToolTip(max_label, 'Maximum mesh element size.')
+        CreateToolTip(max_label, 'Minimum mesh element size.')
 
         curv_label = Label(master3, text="Char. Length from Curvature:")
         curv_label.grid(row=3, column=0)
@@ -74,7 +74,7 @@ class MeshApp(Frame):
         self.MinDict = {'Coarse': '1e-11', 'Normal': '1e-11', 'Fine': '1e-11', 'Custom': ''}
 
         # ADD THE CHARACTERISTIC LENGTH FROM CURVATURE INPUT BOX.
-        self.CharCurv = {'Coarse': '0.1', 'Normal': '0.075', 'Fine': '0.01','Custom': ''}
+        self.CharCurv = {'Coarse': '0.1', 'Normal': '0.075', 'Fine': '0.01', 'Custom': ''}
 
         # ADD THE CHARACTERISTIC LENGTH FACTOR INPUT BOX.
         self.CharLFactor = {'Coarse': '2', 'Normal': '1.75', 'Fine': '1.25', 'Custom': ''}
@@ -102,7 +102,8 @@ class MeshApp(Frame):
         save_close_but.configure(foreground='BLACK', activeforeground='BLACK')
 
         # ADD A PREVIEW BUTTON.
-        preview_but = Button(master3, text='Preview Mesh', command=lambda: MeshApp.preview_fun(mesh, self, 'temp', preview=True))
+        preview_but = Button(master3, text='Preview Mesh', command=lambda: MeshApp.preview_fun(mesh, self, 'temp',
+                                                                                               preview=True))
         preview_but.grid(row=7, column=3)
         preview_but.configure(foreground='BLACK', activeforeground='BLACK')
 

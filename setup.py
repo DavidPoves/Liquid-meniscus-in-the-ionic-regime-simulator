@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
 	name='Liquid meniscus in the ionic regime simulator',
 	version='2.0',
-	packages=['simulator', 'simulator.Tools', 'simulator.Solvers', 'simulator.Main_scripts', 'simulator.Menu_scripts',
+	packages=['simulator', 'simulator.Tools', 'simulator.Solvers', 'simulator.Main_scripts', 'simulator.GUI_scripts',
 	          'simulator.Geometry_scripts'],
 	url='https://github.com/DavidPoves/TFG-V2',
 	license='MIT',

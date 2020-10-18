@@ -256,7 +256,7 @@ class Stokes(object):
         # FUNCTION SPACES #
         # --------------------------------------------------------------------
         V = fn.VectorFunctionSpace(self.mesh, "CG", 2)
-        Q = fn.FunctionSpace(self.mesh, "DG", 1)
+        Q = fn.FunctionSpace(self.mesh, "CG", 1)
         L = fn.FunctionSpace(self.mesh, "DGT", 0)  # DGT 0.
 
         # Create a block function space.

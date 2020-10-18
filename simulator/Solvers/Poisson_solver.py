@@ -594,9 +594,9 @@ class Poisson(object):
         r = fn.SpatialCoordinate(self.mesh)[0]
 
         #                                       phiv                                                         phil                                sigma             #
-        aa = [[r*fn.inner(fn.grad(phiv), fn.grad(v1))*self.dx(self.subdomains_ids['Vacuum'])  , 0                                       , 0                        ],  # Trial Function v1
-              [0                                                                        , phil*v2*self.dx(self.subdomains_ids['Liquid']), 0                        ],  # Trial function v2
-              [0                                                                        , 0                                       , sigma("+")*l("+")*self.dS]]  # Trial function l
+        aa = [[r*fn.inner(fn.grad(phiv), fn.grad(v1))*self.dx(self.subdomains_ids['Vacuum'])  , 0                                       , 0                        ],  # Test Function v1
+              [0                                                                        , phil*v2*self.dx(self.subdomains_ids['Liquid']), 0                        ],  # Test function v2
+              [0                                                                        , 0                                       , sigma("+")*l("+")*self.dS]]        # Test function l
         bb = [fn.Constant(0.)*v1*self.dx(self.subdomains_ids['Vacuum']), fn.Constant(0.)*v2*self.dx(self.subdomains_ids['Liquid']), fn.Constant(0.)*l("+")*self.dS]
 
         # Assemble the previous expressions.
