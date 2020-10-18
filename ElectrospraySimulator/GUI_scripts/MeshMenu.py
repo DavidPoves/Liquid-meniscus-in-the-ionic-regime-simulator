@@ -1,7 +1,7 @@
 from tkinter import *
 
-from simulator.Tools.CreateMesh import create_mesh, write_mesh
-from simulator.GUI_scripts.ToolTip_creator import CreateToolTip
+from ElectrospraySimulator.Tools.CreateMesh import create_mesh, write_mesh
+from ElectrospraySimulator.GUI_scripts.ToolTip_creator import CreateToolTip
 
 """
 Options for the mesh can be found at:

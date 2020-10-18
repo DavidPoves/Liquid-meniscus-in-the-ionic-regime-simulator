@@ -7,10 +7,10 @@ import numpy as np
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from matplotlib.figure import Figure
 
-import simulator.GUI_scripts.PredefinedFuns as PreFuns
-from simulator.Tools.CreateMesh import str_2_num, write_mesh
-from simulator.Geometry_scripts.GMSH_Interface import GMSHInterface
-from simulator.GUI_scripts.ToolTip_creator import CreateToolTip
+import ElectrospraySimulator.GUI_scripts.PredefinedFuns as PreFuns
+from ElectrospraySimulator.Tools.CreateMesh import str_2_num, write_mesh
+from ElectrospraySimulator.Geometry_scripts.GMSH_Interface import GMSHInterface
+from ElectrospraySimulator.GUI_scripts.ToolTip_creator import CreateToolTip
 
 
 class MainMenu(tk.Frame):

@@ -20,9 +20,9 @@ import matplotlib.pyplot as plt
 import multiphenics as mp
 import numpy as np
 
-from simulator.Geometry_scripts.GMSH_Interface import GMSHInterface
-from simulator.Geometry_scripts.ObtainVectors import ObtainVectors
-from simulator.Tools.generate_restrictions import Restrictions
+from ElectrospraySimulator.Geometry_scripts.GMSH_Interface import GMSHInterface
+from ElectrospraySimulator.Geometry_scripts.ObtainVectors import ObtainVectors
+from ElectrospraySimulator.Tools.generate_restrictions import Restrictions
 
 df.parameters["ghost_mode"] = "shared_facet"  # required by dS
 

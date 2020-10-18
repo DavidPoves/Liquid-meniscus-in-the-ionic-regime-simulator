@@ -20,8 +20,8 @@ import _collections_abc
 import webbrowser
 import pandas as pd
 import matplotlib.pyplot as plt
-from simulator.Tools.fplot import FPlot
-from simulator.Tools.export2mat import export2mat
+from ElectrospraySimulator.Tools.fplot import FPlot
+from ElectrospraySimulator.Tools.export2mat import export2mat
 
 
 class SciencePlotting(object):

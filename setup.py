@@ -1,10 +1,11 @@
 from setuptools import setup
 
 setup(
-	name='Liquid meniscus in the ionic regime simulator',
+	name='Liquid meniscus in the ionic regime ElectrospraySimulator',
 	version='2.0',
-	packages=['simulator', 'simulator.Tools', 'simulator.Solvers', 'simulator.Main_scripts', 'simulator.GUI_scripts',
-	          'simulator.Geometry_scripts'],
+	packages=['ElectrospraySimulator', 'ElectrospraySimulator.Tools', 'ElectrospraySimulator.Solvers',
+	          'ElectrospraySimulator.Main_scripts', 'ElectrospraySimulator.GUI_scripts',
+	          'ElectrospraySimulator.Geometry_scripts'],
 	url='https://github.com/DavidPoves/TFG-V2',
 	license='MIT',
 	author='DAVID POVES ROS',

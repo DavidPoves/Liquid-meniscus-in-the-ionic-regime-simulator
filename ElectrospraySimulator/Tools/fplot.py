@@ -21,7 +21,7 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 import _collections_abc
-from simulator.Tools.export2mat import export2mat
+from ElectrospraySimulator.Tools.export2mat import export2mat
 
 
 class FPlot(object):

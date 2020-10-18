@@ -2,8 +2,8 @@ import fenics as fn
 import numpy as np
 import sympy as sp
 
-from simulator.Tools.BVPInterface import BVPInterface as BVP
-from simulator.Geometry_scripts.GMSH_Interface import GMSHInterface
+from ElectrospraySimulator.Tools.BVPInterface import BVPInterface as BVP
+from ElectrospraySimulator.Geometry_scripts.GMSH_Interface import GMSHInterface
 
 
 class SurfaceUpdate(object):

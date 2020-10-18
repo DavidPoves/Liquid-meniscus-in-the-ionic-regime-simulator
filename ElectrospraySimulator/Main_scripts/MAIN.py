@@ -20,14 +20,14 @@ import fenics as fn
 import matplotlib.pyplot as plt
 import numpy as np
 
-from simulator.Liquids import LiquidProperties
-from simulator.GUI_scripts.MainMenu import run_main_menu
-from simulator.Solvers.NS_Solver import Stokes as Stokes_sim
-from simulator.Solvers.Poisson_solver import Poisson
-from simulator.Solvers.SurfaceUpdate import SurfaceUpdate
-from simulator.Tools.MeshConverter import msh2xml
-from simulator.Tools.SciencePlotting import SciencePlotting
-from simulator.Tools.PostProcessing import PostProcessing
+from ElectrospraySimulator.Liquids import LiquidProperties
+from ElectrospraySimulator.GUI_scripts.MainMenu import run_main_menu
+from ElectrospraySimulator.Solvers.NS_Solver import Stokes as Stokes_sim
+from ElectrospraySimulator.Solvers.Poisson_solver import Poisson
+from ElectrospraySimulator.Solvers.SurfaceUpdate import SurfaceUpdate
+from ElectrospraySimulator.Tools.MeshConverter import msh2xml
+from ElectrospraySimulator.Tools.SciencePlotting import SciencePlotting
+from ElectrospraySimulator.Tools.PostProcessing import PostProcessing
 
 """
 This is the main script of the Bachelor Thesis:
@@ -693,7 +693,7 @@ class StokesWrapper(PlottingSettings):
         Kc = (liquid_properties.vacuum_perm * liquid_properties.eps_r * u_star) / (liquid_properties.k_0 * r_star)
         self.Kc = Kc
 
-        # Define the simulator inputs.
+        # Define the ElectrospraySimulator inputs.
         self.inputs = {'Weber number': self.Weber,
                        'Capillary number': self.Capillary,
                        'Relative perm': liquid_properties.eps_r,
@@ -729,7 +729,7 @@ class StokesWrapper(PlottingSettings):
 
     def run_solver(self, file_info):
         """
-        Initialize the Stokes simulator class and solve the problem.
+        Initialize the Stokes ElectrospraySimulator class and solve the problem.
         Args:
             file_info: class containing all the file-related information. Object containing the FilePlacement class.
 

@@ -1,6 +1,6 @@
 import fenics as fn
 
-from simulator.Main_scripts.MAIN import MainWrapper
+from ElectrospraySimulator.Main_scripts.MAIN import MainWrapper
 
 # Copyright (C) 2020- by David Poves Ros
 #

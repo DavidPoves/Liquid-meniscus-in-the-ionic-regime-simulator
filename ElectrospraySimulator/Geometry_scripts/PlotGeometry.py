@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpldatacursor import datacursor
 
-from simulator.Geometry_scripts.GMSH_Interface import GMSHInterface
+from ElectrospraySimulator.Geometry_scripts.GMSH_Interface import GMSHInterface
 
 
 def on_pick(event):

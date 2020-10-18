@@ -20,15 +20,15 @@ import fenics as fn
 import numpy as np
 import sympy as sp
 
-from simulator.Liquids import LiquidProperties
-from simulator.GUI_scripts.MainMenu import run_main_menu
-from simulator.Solvers.NS_Solver import Stokes
-from simulator.Solvers.Poisson_solver import Poisson
-from simulator.Tools.BVPInterface import BVPInterface
-from simulator.Geometry_scripts.GMSH_Interface import GMSHInterface
-from simulator.Tools.MeshConverter import msh2xml
-from simulator.Tools.PlotPy import PlotPy
-from simulator.Tools.PostProcessing import PostProcessing
+from ElectrospraySimulator.Liquids import LiquidProperties
+from ElectrospraySimulator.GUI_scripts.MainMenu import run_main_menu
+from ElectrospraySimulator.Solvers.NS_Solver import Stokes
+from ElectrospraySimulator.Solvers.Poisson_solver import Poisson
+from ElectrospraySimulator.Tools.BVPInterface import BVPInterface
+from ElectrospraySimulator.Geometry_scripts.GMSH_Interface import GMSHInterface
+from ElectrospraySimulator.Tools.MeshConverter import msh2xml
+from ElectrospraySimulator.Tools.PlotPy import PlotPy
+from ElectrospraySimulator.Tools.PostProcessing import PostProcessing
 
 """
 This is the main script of the Bachelor Thesis:
