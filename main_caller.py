@@ -123,6 +123,6 @@ if __name__ == '__main__':
     """ To get a full list of all available inputs for this function, at this point the user may call the
     line SciencePlotting.available_methods_options(), or type help(SciencePlotting).
     """
-    main.simulation_results.Electrostatics.plot_results(save_images=True, save_mat=True, image_format='eps')
-    main.simulation_results.Stokes.plot_results(save_images=True, save_mat=True, image_format='eps')
-    main.simulation_results.SurfaceUpdate.plot_results(save_images=True, save_mat=True, image_format='eps', open_folders=True)
+    main.simulation_results.Electrostatics.plot_results(save_images=True, image_format='eps')
+    main.simulation_results.Stokes.plot_results(save_images=True, image_format='eps')
+    main.simulation_results.SurfaceUpdate.plot_results(save_images=True, image_format='eps')

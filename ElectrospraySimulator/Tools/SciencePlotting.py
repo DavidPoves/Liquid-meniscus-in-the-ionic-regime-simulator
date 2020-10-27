@@ -363,7 +363,7 @@ class SciencePlotting(object):
 							                      open_folder=self.open_folders)
 
 				# Set x and y labels.
-				self.ax.set(ylabel=kwargs.get('ylabel'))
+				self.ax.set(ylabel=ylabel)
 				if kwargs.get('xlabel') is not None:
 					self.ax.set(xlabel=kwargs.get('xlabel'))
 				else:

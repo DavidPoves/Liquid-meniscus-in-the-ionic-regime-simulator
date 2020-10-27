@@ -896,7 +896,7 @@ class SurfaceWrapper(PlottingSettings):
         kwargs.setdefault('save_mat', save_mat)
 
         # Plot the results.
-        self.spy.lineplot([(self.created_nodes, y_plot, 'First iteration'),
-                           (self.r_nodes, self.z_nodes, 'Initial shape')],
-                          xlabel=r'$\hat{r}$', y_label=r'$\hat{z}$',
+        self.spy.lineplot([{r'$\hat{r}$': self.created_nodes, 'First iteration': y_plot},
+                          {r'$\hat{r}$': self.r_nodes, 'Initial shape': self.z_nodes}],
+                          ylabel=r'$\hat{z}$',
                           fig_title='Evolution of the meniscus surface after first iteration.', **kwargs)
