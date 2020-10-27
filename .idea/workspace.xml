@@ -23,68 +23,22 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="25651b62-ba22-4cfa-a8fc-5b753d215375" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/MAIN CODE.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/check_boundaries.h5" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/check_boundaries.xdmf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/check_subdomains.h5" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/check_subdomains.xdmf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/domain_restriction.rtc.xdmf/mesh_function_0.h5" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/domain_restriction.rtc.xdmf/mesh_function_0.xdmf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/domain_restriction.rtc.xdmf/mesh_function_1.h5" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/domain_restriction.rtc.xdmf/mesh_function_1.xdmf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/domain_restriction.rtc.xdmf/mesh_function_2.h5" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/domain_restriction.rtc.xdmf/mesh_function_2.xdmf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/interface_restriction.rtc.xdmf/mesh_function_0.h5" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/interface_restriction.rtc.xdmf/mesh_function_0.xdmf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/interface_restriction.rtc.xdmf/mesh_function_1.h5" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/interface_restriction.rtc.xdmf/mesh_function_1.xdmf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/interface_restriction.rtc.xdmf/mesh_function_2.h5" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/interface_restriction.rtc.xdmf/mesh_function_2.xdmf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/liquid_rtc_restriction.rtc.xdmf/mesh_function_0.h5" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/liquid_rtc_restriction.rtc.xdmf/mesh_function_0.xdmf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/liquid_rtc_restriction.rtc.xdmf/mesh_function_1.h5" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/liquid_rtc_restriction.rtc.xdmf/mesh_function_1.xdmf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/liquid_rtc_restriction.rtc.xdmf/mesh_function_2.h5" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/liquid_rtc_restriction.rtc.xdmf/mesh_function_2.xdmf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/vacuum_rtc_restriction.rtc.xdmf/mesh_function_0.h5" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/vacuum_rtc_restriction.rtc.xdmf/mesh_function_0.xdmf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/vacuum_rtc_restriction.rtc.xdmf/mesh_function_1.h5" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/vacuum_rtc_restriction.rtc.xdmf/mesh_function_1.xdmf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/vacuum_rtc_restriction.rtc.xdmf/mesh_function_2.h5" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CHECKS/vacuum_rtc_restriction.rtc.xdmf/mesh_function_2.xdmf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/MESH OBJECTS/Prueba.geo" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/MESH OBJECTS/Prueba.msh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/MESH OBJECTS/Prueba.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/MESH OBJECTS/Prueba_facet_region.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/MESH OBJECTS/Prueba_physical_region.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/RESTRICTIONS/domain_restriction.rtc.xml/mesh_function_0.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/RESTRICTIONS/domain_restriction.rtc.xml/mesh_function_1.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/RESTRICTIONS/domain_restriction.rtc.xml/mesh_function_2.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/RESTRICTIONS/interface_restriction.rtc.xml/mesh_function_0.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/RESTRICTIONS/interface_restriction.rtc.xml/mesh_function_1.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/RESTRICTIONS/interface_restriction.rtc.xml/mesh_function_2.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/RESTRICTIONS/liquid_rtc_restriction.rtc.xml/mesh_function_0.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/RESTRICTIONS/liquid_rtc_restriction.rtc.xml/mesh_function_1.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/RESTRICTIONS/liquid_rtc_restriction.rtc.xml/mesh_function_2.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/RESTRICTIONS/vacuum_rtc_restriction.rtc.xml/mesh_function_0.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/RESTRICTIONS/vacuum_rtc_restriction.rtc.xml/mesh_function_1.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/RESTRICTIONS/vacuum_rtc_restriction.rtc.xml/mesh_function_2.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/TFG-V2.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/copyright/Thesis.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ElectrospraySimulator/Main_scripts/MAIN.py" beforeDir="false" afterPath="$PROJECT_DIR$/ElectrospraySimulator/Main_scripts/MAIN.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ElectrospraySimulator/Tools/SciencePlotting.py" beforeDir="false" afterPath="$PROJECT_DIR$/ElectrospraySimulator/Tools/SciencePlotting.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main_caller.py" beforeDir="false" afterPath="$PROJECT_DIR$/main_caller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/setup.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Setup Script" />
+        <option value="Python Script" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -102,7 +56,7 @@
     <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="settings.editor.selected.configurable" value="PyScientificConfigurable" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="PyConsoleOptionsProvider">
     <option name="myPythonConsoleState">
@@ -139,6 +93,9 @@
       <module name="MAIN CODE" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
       <option name="SDK_HOME" value="$USER_HOME$/.conda/envs/MAIN/bin/python" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
       <option name="IS_MODULE_SDK" value="false" />
@@ -166,6 +123,7 @@
       <workItem from="1603091329458" duration="5742000" />
       <workItem from="1603118045837" duration="359000" />
       <workItem from="1603118446088" duration="383000" />
+      <workItem from="1603784383291" duration="2163000" />
     </task>
     <servers />
   </component>
@@ -188,13 +146,13 @@
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="356" y="166" width="1079" height="840" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1603091579913">
+    <state x="356" y="166" width="1079" height="869" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1603786037817">
       <screen x="0" y="23" width="1792" height="1097" />
     </state>
-    <state x="356" y="166" width="1079" height="840" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.23.1792.1097@0.23.1792.1097" timestamp="1603091579913" />
-    <state x="227" y="129" key="SettingsEditor" timestamp="1603118010747">
+    <state x="356" y="166" width="1079" height="869" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.23.1792.1097@0.23.1792.1097" timestamp="1603786037817" />
+    <state x="227" y="129" key="SettingsEditor" timestamp="1603784686417">
       <screen x="0" y="23" width="1792" height="1097" />
     </state>
-    <state x="227" y="129" key="SettingsEditor/0.23.1792.1097@0.23.1792.1097" timestamp="1603118010747" />
+    <state x="227" y="129" key="SettingsEditor/0.23.1792.1097@0.23.1792.1097" timestamp="1603784686417" />
   </component>
 </project>
